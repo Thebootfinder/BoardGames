@@ -1,0 +1,792 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#EEF1F5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F131B" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Compte les points de tes jeux de société : Skyjo, Flip 7, Uno, 6 qui prend et les autres.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Tablée">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Tablée</title>
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: one-column phone app, a sticky top bar, a fixed bottom action, full-screen sheet for entering a round. */
+:root{
+  --bg:#EEF1F5; --surface:#FFFFFF; --ink:#151A26; --muted:#5B6378; --line:#D9DEE8;
+  --accent:#1E6B57; --accent-ink:#FFFFFF; --accent-soft:#DCEEE7;
+  --gold:#C98A12; --danger:#C2412D; --danger-soft:#FBE4DF;
+  --display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F131B; --surface:#192030; --ink:#EDF0F6; --muted:#98A1B8; --line:#2A3346;
+  --accent:#4CC79F; --accent-ink:#06231A; --accent-soft:#16352D;
+  --gold:#F0B33C; --danger:#F07A63; --danger-soft:#3A1F1C; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F131B; --surface:#192030; --ink:#EDF0F6; --muted:#98A1B8; --line:#2A3346;
+  --accent:#4CC79F; --accent-ink:#06231A; --accent-soft:#16352D;
+  --gold:#F0B33C; --danger:#F07A63; --danger-soft:#3A1F1C; color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.4;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 120px}
+.num{font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+
+/* top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;align-items:center;gap:10px;padding-block:14px 10px}
+.top h1{font-size:26px;font-weight:800;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brand{display:flex;align-items:baseline;gap:8px}
+.brand small{font-size:13px;color:var(--muted);font-family:var(--body);font-weight:400}
+.icon-btn{border:1px solid var(--line);background:var(--surface);border-radius:12px;min-width:44px;height:44px;padding:0 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-weight:700;font-size:15px}
+.icon-btn svg{width:20px;height:20px}
+
+.section{display:flex;flex-direction:column;gap:12px;margin-top:22px}
+.section-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.section-head h2{font-size:19px;font-weight:700}
+.link{background:none;border:0;color:var(--accent);font-weight:700;padding:6px 0}
+
+/* game tiles */
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.tile{position:relative;overflow:hidden;text-align:left;border:0;border-radius:var(--r);padding:14px 14px 12px;min-height:104px;background:var(--tile);color:#fff;display:flex;flex-direction:column;justify-content:space-between;gap:8px}
+.tile b{font-family:var(--display);font-size:21px;font-weight:800;line-height:1.05;position:relative}
+.tile span{font-size:13px;opacity:.92;position:relative}
+.tile::after{content:attr(data-glyph);position:absolute;right:-6px;bottom:-22px;font-family:var(--display);font-weight:800;font-size:84px;opacity:.16;line-height:1}
+.tile.wide{grid-column:1/-1;min-height:64px;background:var(--surface);color:var(--ink);border:1.5px dashed var(--line);flex-direction:row;align-items:center}
+.tile.wide::after{display:none}
+.tile.wide b{font-size:18px}
+.tile.wide span{color:var(--muted)}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.live-card{display:flex;flex-direction:column;gap:10px;text-align:left;width:100%}
+.row{display:flex;align-items:center;gap:10px;min-width:0}
+.grow{flex:1;min-width:0}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:3px 10px;font-size:13px;font-weight:700;background:var(--accent-soft);color:var(--accent)}
+.pill.done{background:var(--line);color:var(--muted)}
+.dot{width:12px;height:12px;border-radius:50%;flex:none;background:var(--c)}
+.avatar{width:34px;height:34px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:700;font-family:var(--display);color:#fff;background:var(--c);font-size:15px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.mini-scores{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px}
+.mini-scores span{display:inline-flex;align-items:center;gap:6px}
+.crown{color:var(--gold)}
+
+.empty{border:1.5px dashed var(--line);border-radius:var(--r);padding:18px;color:var(--muted);display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+
+/* setup */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1.5px solid var(--line);background:var(--surface);border-radius:99px;padding:8px 14px;font-weight:700;display:inline-flex;align-items:center;gap:8px;min-height:42px}
+.chip[aria-pressed="true"]{border-color:var(--c,var(--accent));background:color-mix(in srgb,var(--c,var(--accent)) 16%,var(--surface))}
+.chip .dot{width:10px;height:10px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-weight:700;font-size:14px}
+.input{width:100%;font:inherit;font-size:17px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:11px 12px;min-height:46px}
+.input:focus{border-color:var(--accent);outline:none}
+.add-row{display:flex;gap:8px}
+.add-row .input{flex:1;min-width:0}
+.btn{border:0;border-radius:14px;padding:14px 18px;font-weight:700;font-size:17px;background:var(--accent);color:var(--accent-ink);min-height:52px}
+.btn.ghost{background:var(--surface);color:var(--ink);border:1.5px solid var(--line)}
+.btn.danger{background:var(--danger);color:#fff}
+.btn:disabled{opacity:.45}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0}
+.switch{appearance:none;width:52px;height:30px;border-radius:99px;background:var(--line);position:relative;flex:none;transition:background .15s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.switch:checked{background:var(--accent)}
+.switch:checked::after{transform:translateX(22px)}
+.rule{font-size:14px;color:var(--muted);background:var(--surface);border-left:3px solid var(--tile,var(--accent));padding:10px 12px;border-radius:0 10px 10px 0}
+.order-list{display:flex;flex-direction:column;gap:6px}
+.order-item{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:6px 6px 6px 10px}
+.order-item b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.order-item button{border:0;background:none;width:38px;height:38px;border-radius:10px;font-size:18px;color:var(--muted)}
+
+/* bottom action */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:6;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--bg) 70%,transparent)}
+.dock-inner{max-width:560px;margin:0 auto;display:flex;gap:10px}
+.dock .btn{flex:1}
+
+/* leaderboard */
+.board{display:flex;flex-direction:column;gap:8px}
+.lead{display:grid;grid-template-columns:28px 34px minmax(0,1fr) auto;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;position:relative;overflow:hidden}
+.lead .rank{font-family:var(--display);font-weight:800;font-size:20px;color:var(--muted);text-align:center}
+.lead.first .rank{color:var(--gold)}
+.lead .name{font-weight:700;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lead .sub{font-size:13px;color:var(--muted)}
+.lead .total{font-family:var(--display);font-weight:800;font-size:34px;line-height:1;text-align:right}
+.lead .delta{font-size:13px;color:var(--muted);text-align:right;font-weight:700}
+.bar{grid-column:1/-1;height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--c);border-radius:99px;transition:width .4s ease}
+.bar.hot i{background:var(--danger)}
+.lead.first{border-color:color-mix(in srgb,var(--gold) 55%,var(--line))}
+
+.meta-line{display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:var(--muted);font-size:14px}
+
+/* chart */
+.chart{width:100%;height:auto;display:block}
+.chart text{fill:var(--muted);font-size:11px;font-family:var(--body)}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .target{stroke:var(--danger);stroke-dasharray:4 4;stroke-width:1.5}
+
+/* table */
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:15px}
+th,td{padding:9px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--surface);color:var(--muted);font-weight:700}
+thead th{font-size:13px;font-weight:700;color:var(--ink)}
+thead th .dot{display:inline-block;vertical-align:middle;margin-right:5px;width:9px;height:9px}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:color-mix(in srgb,var(--accent) 6%,var(--surface))}
+tfoot td{font-weight:800;font-family:var(--display);font-size:17px;border-bottom:0}
+.mark{font-size:11px;font-weight:700;color:var(--gold);margin-left:3px}
+.best{color:var(--accent);font-weight:700}
+
+/* finished banner */
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;padding-top:10px}
+.step{flex:1;max-width:130px;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.step .block{width:100%;border-radius:12px 12px 4px 4px;background:var(--c);color:#fff;display:flex;align-items:flex-start;justify-content:center;padding-top:8px;font-family:var(--display);font-weight:800;font-size:24px}
+.step .who{font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.step .pts{font-size:14px;color:var(--muted)}
+.winner-banner{text-align:center;display:flex;flex-direction:column;gap:4px;padding:18px 14px}
+.winner-banner h2{font-size:28px;font-weight:800}
+
+/* entry sheet */
+.sheet{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px)}
+.sheet[hidden]{display:none!important}
+.sheet-head{display:flex;align-items:center;gap:10px;padding-block:12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:560px;width:100%;margin:0 auto}
+.sheet-head h2{flex:1;font-size:22px;font-weight:800}
+.sheet-body{flex:1;overflow-y:auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-bottom:16px}
+.sheet-body-inner{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
+.sheet-foot{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:10px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--surface)}
+.sheet-foot-inner{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
+.entry{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.entry.is-winner{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+.entry-top{display:flex;align-items:center;gap:10px}
+.entry-top .who{flex:1;min-width:0}
+.entry-top .who b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:17px}
+.entry-top .who small{color:var(--muted);font-size:13px}
+.stepper{display:flex;align-items:center;gap:4px}
+.stepper button{width:40px;height:46px;border-radius:11px;border:1.5px solid var(--line);background:var(--bg);font-size:22px;font-weight:700;line-height:1}
+.stepper .sign{width:40px;font-size:17px}
+.stepper .sign[aria-pressed="true"]{background:var(--danger-soft);border-color:var(--danger);color:var(--danger)}
+.score-in{width:72px;height:46px;text-align:center;font-family:var(--display);font-weight:800;font-size:24px;border:1.5px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);font-variant-numeric:tabular-nums}
+.score-in:focus{border-color:var(--accent);outline:none}
+.score-in:disabled{opacity:.4}
+.entry-extra{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.mini{border:1.5px solid var(--line);background:var(--bg);border-radius:99px;padding:5px 12px;font-size:14px;font-weight:700;min-height:34px}
+.mini[aria-pressed="true"]{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 18%,var(--surface))}
+.preview{margin-left:auto;font-size:14px;color:var(--muted);font-weight:700}
+.preview.up{color:var(--danger)}
+.hint{font-size:14px;color:var(--muted)}
+
+.confirm{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.backup{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;font-size:14px}
+.backup .link{cursor:pointer}
+.save-note{font-size:12px;color:var(--muted);text-align:center;margin-top:28px}
+.seg{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.seg button{border:1.5px solid var(--line);background:var(--surface);border-radius:99px;padding:6px 12px;font-weight:700;font-size:14px;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.stat-row{display:grid;grid-template-columns:34px minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.stat-row:last-child{border-bottom:0}
+.stat-row .big{font-family:var(--display);font-weight:800;font-size:22px;text-align:right}
+.stat-row .of{font-size:13px;color:var(--muted);text-align:right;min-width:62px}
+
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+@keyframes pop{from{transform:scale(.96);opacity:.6}to{transform:none;opacity:1}}
+.lead.bump{animation:pop .35s ease}
+</style>
+
+</head>
+<body>
+<div id="app" class="wrap"></div>
+<div id="sheet" class="sheet" hidden></div>
+<div id="dock" class="dock" hidden></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ---------- Game presets (original rules summaries, no game assets) ---------- */
+const PRESETS = {
+  skyjo:{name:'Skyjo',low:true,target:100,mode:'points',neg:true,closer:true,tile:'#2D8FB8',glyph:'-2',
+    desc:'Petit score gagne · fin à 100',
+    rule:'La partie s’arrête dès qu’un joueur atteint 100. Le plus petit total gagne. Celui qui termine la manche voit son score doublé s’il n’a pas strictement le plus petit score (et s’il est positif).'},
+  flip7:{name:'Flip 7',low:false,target:200,mode:'points',chips:[15],tile:'#D9534F',glyph:'7',
+    desc:'Gros score gagne · objectif 200',
+    rule:'Le premier à 200 points déclenche la fin de partie, le plus gros total gagne. Un joueur éliminé marque 0. Bonus de +15 pour 7 cartes différentes.'},
+  uno:{name:'Uno',low:false,target:500,mode:'winner',tile:'#C0392B',glyph:'+4',
+    desc:'Le gagnant prend les points · 500',
+    rule:'Choisis qui a vidé sa main, puis saisis la valeur des cartes restantes des autres. Le gagnant de la manche marque le total. Premier à 500.'},
+  sixqp:{name:'6 qui prend',low:true,target:66,mode:'points',tile:'#7B4FB8',glyph:'66',
+    desc:'Moins de têtes gagne · fin à 66',
+    rule:'Note les têtes ramassées par chacun à chaque manche. Dès qu’un joueur atteint 66, la partie s’arrête et celui qui en a le moins gagne.'},
+  libre:{name:'Partie libre',low:false,target:null,mode:'points',neg:true,tile:'#3E5C76',glyph:'?',
+    desc:'N’importe quel jeu',
+    rule:'Règle le sens du classement et un éventuel score de fin. Utile pour le Tarot, la Belote, Yams, etc.'}
+};
+const COLORS = ['#E2552B','#2F80C2','#E39B1B','#2E9E62','#8C5BD6','#D94A8C','#159A9A','#6F7B2C'];
+
+/* ---------- State & storage ---------- */
+const LS_KEY = 'tablee.v1';
+let S = { players:[], games:{} };
+let ui = { flash:'', view:'home', gameId:null, setup:null, statFilter:'all', confirmDelete:false };
+let remote = null; // {col}
+let saveMode = 'local';
+
+function uid(){ return Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4); }
+function esc(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function lsRead(){ try{ const t = localStorage.getItem(LS_KEY); if(t){ const v = JSON.parse(t); if(v && v.games) S = v; } }catch(e){} }
+function lsWrite(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }catch(e){} }
+
+function persistGame(g){
+  g.updatedAt = Date.now();
+  S.games[g.id] = g; lsWrite();
+  if(remote){ remote.col.doc('g_'+g.id).set(JSON.parse(JSON.stringify(g))).catch(()=>{}); }
+}
+function removeGame(id){
+  delete S.games[id]; lsWrite();
+  if(remote){ remote.col.doc('g_'+id).delete().catch(()=>{}); }
+}
+function persistPlayers(){
+  lsWrite();
+  if(remote){ remote.col.doc('players').set({list:S.players, updatedAt:Date.now()}).catch(()=>{}); }
+}
+
+async function connectRemote(){
+  if(!window.claude || !window.claude.use) return;
+  try{
+    const [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+    if(!db || !user) return;
+    const id = await user.id(); if(!id) return;
+    const col = db.collection('data/users/'+id);
+    const snap = await Promise.race([col.get(), new Promise((_,rej)=>setTimeout(()=>rej('timeout'),10000))]);
+    remote = { col };
+    saveMode = 'cloud';
+    let remotePlayers = null; const seen = {};
+    snap.docs.forEach(d=>{
+      const v = d.data(); if(!v) return;
+      if(d.id === 'players'){ remotePlayers = v.list || []; return; }
+      if(d.id.startsWith('g_') && v.id){
+        seen[v.id] = true;
+        const loc = S.games[v.id];
+        if(!loc || (v.updatedAt||0) >= (loc.updatedAt||0)) S.games[v.id] = v;
+        else col.doc('g_'+v.id).set(JSON.parse(JSON.stringify(loc))).catch(()=>{});
+      }
+    });
+    Object.values(S.games).forEach(g=>{ if(!seen[g.id]) col.doc('g_'+g.id).set(JSON.parse(JSON.stringify(g))).catch(()=>{}); });
+    if(remotePlayers){
+      const byId = {}; remotePlayers.concat(S.players).forEach(p=>{ if(!byId[p.id]) byId[p.id]=p; });
+      S.players = Object.values(byId);
+    }
+    persistPlayers(); lsWrite();
+    if(!document.querySelector('#sheet:not([hidden])')) render();
+  }catch(e){ remote = null; saveMode = 'local'; render(); }
+}
+
+/* ---------- Scoring helpers ---------- */
+function totals(g){ const t = {}; g.players.forEach(p=>t[p.id]=0); g.rounds.forEach(r=>g.players.forEach(p=>t[p.id]+=(r.scores[p.id]||0))); return t; }
+function ranking(g){
+  const t = totals(g);
+  const arr = g.players.map(p=>({p, total:t[p.id]}));
+  arr.sort((a,b)=> g.low ? a.total-b.total : b.total-a.total);
+  let rank = 0, prev = null;
+  arr.forEach((x,i)=>{ if(prev===null || x.total!==prev){ rank=i+1; prev=x.total; } x.rank=rank; });
+  return arr;
+}
+function reachedTarget(g){ if(!g.target) return false; const t = totals(g); return Object.values(t).some(v=>v>=g.target); }
+function winners(g){ const r = ranking(g); return r.filter(x=>x.rank===1).map(x=>x.p.id); }
+function gameTitle(g){ return g.name || (PRESETS[g.type]||PRESETS.libre).name; }
+function fmtDate(ts){ try{ return new Date(ts).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) + ' · ' + new Date(ts).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+function initial(n){ return esc((n||'?').trim().charAt(0).toUpperCase()); }
+function sign(v){ return v>0?'+'+v:String(v); }
+
+/* ---------- Rendering ---------- */
+const app = document.getElementById('app');
+const dock = document.getElementById('dock');
+const sheet = document.getElementById('sheet');
+
+function render(){
+  if(ui.view==='home') renderHome();
+  else if(ui.view==='setup') renderSetup();
+  else if(ui.view==='game') renderGame();
+  else if(ui.view==='history') renderHistory();
+  manageWakeLock();
+}
+
+const ICON_BACK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>';
+
+function renderHome(){
+  const games = Object.values(S.games);
+  const live = games.filter(g=>g.status==='live').sort((a,b)=>b.updatedAt-a.updatedAt);
+  const done = games.filter(g=>g.status==='done').sort((a,b)=>(b.finishedAt||0)-(a.finishedAt||0));
+  let h = `<header class="top"><div class="brand"><h1>Tablée</h1><small>scores de jeux</small></div></header>`;
+  if(live.length){
+    h += `<section class="section"><div class="section-head"><h2>En cours</h2></div>`;
+    live.forEach(g=>{ h += gameCard(g); });
+    h += `</section>`;
+  }
+  h += `<section class="section"><div class="section-head"><h2>Nouvelle partie</h2></div><div class="tiles">`;
+  ['skyjo','flip7','uno','sixqp'].forEach(k=>{ const p = PRESETS[k];
+    h += `<button class="tile" style="--tile:${p.tile}" data-glyph="${esc(p.glyph)}" data-act="new" data-type="${k}"><b>${p.name}</b><span>${p.desc}</span></button>`; });
+  h += `<button class="tile wide" data-act="new" data-type="libre"><b>+ Autre jeu</b><span>règles libres</span></button></div></section>`;
+
+  h += `<section class="section"><div class="section-head"><h2>Dernières parties</h2>${done.length?'<button class="link" data-act="history">Tout voir</button>':''}</div>`;
+  if(done.length){ done.slice(0,3).forEach(g=>{ h += gameCard(g); }); }
+  else h += `<div class="empty"><span>Tes parties terminées apparaîtront ici avec le gagnant et les scores finaux.</span><button class="btn ghost" data-act="demo">Voir un exemple de partie</button></div>`;
+  h += `</section>`;
+  if(done.length) h += statsSection(done);
+  h += `<p class="save-note">${saveMode==='cloud'?'Parties sauvegardées sur ton compte.':'Parties sauvegardées sur cet appareil.'}</p>`;
+  if(!window.claude){
+    h += `<div class="backup"><button class="link" data-act="export">Exporter mes parties</button><span class="muted">·</span><label class="link" for="import-file">Importer une sauvegarde</label><input type="file" id="import-file" accept="application/json,.json" hidden></div>`;
+    if(ui.flash) h += `<p class="save-note" role="status" style="margin-top:4px">${esc(ui.flash)}</p>`;
+  }
+  app.innerHTML = h; dock.hidden = true;
+}
+
+function gameCard(g){
+  const r = ranking(g); const t = totals(g);
+  const p = PRESETS[g.type]||PRESETS.libre;
+  const isDone = g.status==='done';
+  const scores = r.map(x=>`<span><i class="dot" style="--c:${x.p.color}"></i>${esc(x.p.name)} <b class="num">${x.total}</b>${isDone&&x.rank===1?' <span class="crown" aria-label="gagnant">★</span>':''}</span>`).join('');
+  return `<button class="card live-card" data-act="open" data-id="${g.id}">
+    <div class="row"><i class="dot" style="--c:${p.tile}"></i><b class="grow">${esc(gameTitle(g))}</b>
+    <span class="pill ${isDone?'done':''}">${isDone?fmtDate(g.finishedAt):'Manche '+(g.rounds.length+1)}</span></div>
+    <div class="mini-scores">${scores}</div></button>`;
+}
+
+function statsSection(done){
+  const types = Array.from(new Set(done.map(g=>g.type)));
+  const f = ui.statFilter;
+  const list = done.filter(g=>f==='all'||g.type===f);
+  const st = {};
+  list.forEach(g=>{ const w = winners(g); g.players.forEach(p=>{
+    const k = p.name.trim().toLowerCase();
+    st[k] = st[k] || {name:p.name,color:p.color,played:0,wins:0};
+    st[k].played++; if(w.includes(p.id)) st[k].wins++; }); });
+  const rows = Object.values(st).sort((a,b)=>b.wins-a.wins || (b.wins/b.played)-(a.wins/a.played));
+  let h = `<section class="section"><div class="section-head"><h2>Qui gagne le plus ?</h2></div>`;
+  if(types.length>1){
+    h += `<div class="seg" role="group" aria-label="Filtrer par jeu"><button aria-pressed="${f==='all'}" data-act="stat" data-f="all">Tous</button>`;
+    types.forEach(t=>{ h += `<button aria-pressed="${f===t}" data-act="stat" data-f="${t}">${esc((PRESETS[t]||PRESETS.libre).name)}</button>`; });
+    h += `</div>`;
+  }
+  h += `<div class="card">`;
+  rows.forEach(x=>{ h += `<div class="stat-row"><span class="avatar" style="--c:${x.color}">${initial(x.name)}</span><b>${esc(x.name)}</b><span class="big num">${x.wins}</span><span class="of num">victoire${x.wins>1?'s':''}<br>sur ${x.played}</span></div>`; });
+  h += `</div></section>`;
+  return h;
+}
+
+function renderHistory(){
+  const done = Object.values(S.games).filter(g=>g.status==='done').sort((a,b)=>(b.finishedAt||0)-(a.finishedAt||0));
+  let h = `<header class="top"><button class="icon-btn" data-act="home" aria-label="Retour">${ICON_BACK}</button><h1>Historique</h1></header><section class="section">`;
+  if(!done.length) h += `<div class="empty">Aucune partie terminée pour l’instant.</div>`;
+  done.forEach(g=>{ h += gameCard(g); });
+  h += `</section>`;
+  if(done.length) h += statsSection(done);
+  app.innerHTML = h; dock.hidden = true;
+}
+
+/* ---------- Setup ---------- */
+function startSetup(type, from){
+  const p = PRESETS[type];
+  ui.setup = { type, name: type==='libre'?'':'', target: p.target, low: p.low,
+    selected: from ? from.players.map(x=>x.id) : [], newName:'' };
+  if(from){ ui.setup.target = from.target; ui.setup.low = from.low; ui.setup.name = from.name||''; }
+  ui.view = 'setup'; render(); window.scrollTo(0,0);
+}
+
+function renderSetup(){
+  const s = ui.setup; const p = PRESETS[s.type];
+  let h = `<header class="top"><button class="icon-btn" data-act="home" aria-label="Retour">${ICON_BACK}</button><h1>${esc(p.name)}</h1></header>`;
+  h += `<p class="rule" style="--tile:${p.tile}">${esc(p.rule)}</p>`;
+  if(s.type==='libre'){
+    h += `<section class="section"><div class="field"><label for="g-name">Nom du jeu</label><input id="g-name" class="input" placeholder="Tarot, Belote, Yams…" value="${esc(s.name)}" autocomplete="off"></div></section>`;
+  }
+  h += `<section class="section"><div class="section-head"><h2>Joueurs</h2><span class="muted small">${s.selected.length} choisi${s.selected.length>1?'s':''}</span></div>`;
+  if(S.players.length){
+    h += `<div class="chips">`;
+    S.players.forEach(pl=>{ const on = s.selected.includes(pl.id);
+      h += `<button class="chip" style="--c:${pl.color}" aria-pressed="${on}" data-act="pick" data-id="${pl.id}"><i class="dot" style="--c:${pl.color}"></i>${esc(pl.name)}</button>`; });
+    h += `</div>`;
+  }
+  h += `<form class="add-row" id="add-form"><input id="new-player" class="input" placeholder="Ajouter un joueur" autocomplete="off" enterkeyhint="done" value="${esc(s.newName)}"><button class="btn" type="submit" style="min-height:46px;padding:0 16px">Ajouter</button></form>`;
+  if(s.selected.length>1){
+    h += `<div class="eyebrow" style="margin-top:6px">Ordre de jeu</div><div class="order-list">`;
+    s.selected.forEach((id,i)=>{ const pl = S.players.find(x=>x.id===id); if(!pl) return;
+      h += `<div class="order-item"><span class="avatar" style="--c:${pl.color}">${initial(pl.name)}</span><b>${esc(pl.name)}</b>
+      <button data-act="up" data-i="${i}" aria-label="Monter ${esc(pl.name)}" ${i===0?'disabled':''}>↑</button>
+      <button data-act="unpick" data-id="${id}" aria-label="Retirer ${esc(pl.name)}">✕</button></div>`; });
+    h += `</div>`;
+  }
+  h += `</section>`;
+  h += `<section class="section"><div class="section-head"><h2>Règles</h2></div><div class="card" style="display:flex;flex-direction:column;gap:10px">
+    <div class="field"><label for="g-target">Score de fin de partie</label><input id="g-target" class="input num" inputmode="numeric" pattern="[0-9]*" placeholder="Aucun (fin manuelle)" value="${s.target??''}"></div>
+    <label class="toggle" for="g-low"><span><b>Le plus petit score gagne</b><br><span class="muted small">${s.low?'Comme au Skyjo ou au 6 qui prend':'Le plus gros total est en tête'}</span></span><input type="checkbox" class="switch" id="g-low" ${s.low?'checked':''}></label>
+  </div></section>`;
+  app.innerHTML = h;
+  dock.hidden = false;
+  dock.innerHTML = `<div class="dock-inner"><button class="btn" data-act="start" ${s.selected.length<2?'disabled':''}>${s.selected.length<2?'Choisis au moins 2 joueurs':'Commencer la partie'}</button></div>`;
+}
+
+function addPlayer(name){
+  name = name.trim(); if(!name) return null;
+  let pl = S.players.find(x=>x.name.trim().toLowerCase()===name.toLowerCase());
+  if(!pl){
+    const used = S.players.map(x=>x.color);
+    const color = COLORS.find(c=>!used.includes(c)) || COLORS[S.players.length % COLORS.length];
+    pl = { id: uid(), name, color }; S.players.push(pl); persistPlayers();
+  }
+  return pl;
+}
+
+function startGame(){
+  const s = ui.setup; const p = PRESETS[s.type];
+  const players = s.selected.map(id=>S.players.find(x=>x.id===id)).filter(Boolean).map(x=>({id:x.id,name:x.name,color:x.color}));
+  // avoid identical colors inside a game
+  const seenC = new Set(); players.forEach(pl=>{ if(seenC.has(pl.color)){ pl.color = COLORS.find(c=>!seenC.has(c))||pl.color; } seenC.add(pl.color); });
+  const g = { id: uid(), type: s.type, name: s.type==='libre' ? (s.name.trim()||'Partie libre') : '', target: s.target||null, low: !!s.low,
+    mode: p.mode, players, rounds: [], status:'live', createdAt: Date.now() };
+  persistGame(g);
+  ui.view='game'; ui.gameId=g.id; ui.setup=null; render(); window.scrollTo(0,0);
+}
+
+/* ---------- Game view ---------- */
+function renderGame(){
+  const g = S.games[ui.gameId]; if(!g){ ui.view='home'; return render(); }
+  const p = PRESETS[g.type]||PRESETS.libre;
+  const r = ranking(g); const n = g.rounds.length;
+  const last = n ? g.rounds[n-1] : null;
+  const isDone = g.status==='done';
+  let h = `<header class="top"><button class="icon-btn" data-act="home" aria-label="Accueil">${ICON_BACK}</button><h1>${esc(gameTitle(g))}</h1>
+    ${!isDone && n ? `<button class="icon-btn" data-act="undo" aria-label="Annuler la dernière manche">↶</button>`:''}</header>`;
+  h += `<div class="meta-line"><span class="pill ${isDone?'done':''}" style="${isDone?'':`background:color-mix(in srgb,${p.tile} 16%,var(--surface));color:var(--ink)`}">${isDone?'Terminée':(n? n+' manche'+(n>1?'s':'')+' jouée'+(n>1?'s':'') : 'Prêts à jouer')}</span>
+    <span>${g.target?(g.low?'Fin à ':'Objectif ')+g.target:'Sans limite'}</span><span>·</span><span>${g.low?'petit score gagne':'gros score gagne'}</span></div>`;
+
+  if(isDone){
+    const w = r.filter(x=>x.rank===1);
+    h += `<section class="section"><div class="card winner-banner"><span class="eyebrow">${fmtDate(g.finishedAt)}</span>
+      <h2>${w.map(x=>esc(x.p.name)).join(' & ')} ${w.length>1?'gagnent':'gagne'} !</h2><span class="muted">${w[0].total} points en ${n} manche${n>1?'s':''}</span>${podium(r)}</div></section>`;
+  }
+
+  h += `<section class="section"><div class="board">`;
+  const max = g.target || Math.max(1, ...r.map(x=>Math.abs(x.total)));
+  r.forEach((x,i)=>{
+    const d = last ? (last.scores[x.p.id]||0) : null;
+    const pct = Math.max(0, Math.min(100, (x.total/max)*100));
+    const hot = g.low && g.target && x.total >= g.target*0.8;
+    const lead = r[0].total; const gap = Math.abs(x.total-lead);
+    const second = r.find(y=>y.rank>1);
+    const sub = !n ? '' : x.rank===1 ? (second ? Math.abs(second.total-lead)+' pts d’avance' : 'à égalité') : gap+' pts du 1er';
+    const mk = last && last.marks && last.marks[x.p.id];
+    h += `<div class="lead ${x.rank===1&&n?'first':''}" data-pid="${x.p.id}">
+      <span class="rank num">${n?x.rank:'·'}</span><span class="avatar" style="--c:${x.p.color}">${initial(x.p.name)}</span>
+      <div style="min-width:0"><div class="name">${esc(x.p.name)}</div><div class="sub">${esc(sub)}</div></div>
+      <div><div class="total num">${x.total}</div>${d!==null?`<div class="delta num">${sign(d)}${mk==='x2'?' ×2':mk==='win'?' ★':''}</div>`:''}</div>
+      ${g.target?`<div class="bar ${hot?'hot':''}" aria-hidden="true"><i style="width:${pct}%;--c:${x.p.color}"></i></div>`:''}
+    </div>`;
+  });
+  h += `</div></section>`;
+
+  if(n>=2) h += `<section class="section"><div class="section-head"><h2>Évolution</h2></div><div class="card">${chart(g)}</div></section>`;
+  if(n) h += `<section class="section"><div class="section-head"><h2>Manches</h2><span class="muted small">Touche une manche pour la corriger</span></div>${roundsTable(g)}</section>`;
+
+  if(isDone){
+    h += `<section class="section">`;
+    if(ui.confirmDelete) h += `<div class="card confirm"><span class="grow">Supprimer définitivement cette partie ?</span><button class="btn ghost" data-act="nodel" style="min-height:44px">Garder</button><button class="btn danger" data-act="del" style="min-height:44px">Supprimer</button></div>`;
+    else h += `<div class="confirm"><button class="link" data-act="reopen">Reprendre la partie</button><span class="grow"></span><button class="link" style="color:var(--danger)" data-act="askdel">Supprimer</button></div>`;
+    h += `</section>`;
+  } else if(n){
+    h += `<section class="section"><div class="confirm"><button class="link" data-act="finish">Terminer la partie maintenant</button></div></section>`;
+  }
+  app.innerHTML = h;
+  dock.hidden = false;
+  dock.innerHTML = isDone
+    ? `<div class="dock-inner"><button class="btn" data-act="replay">Rejouer avec les mêmes joueurs</button></div>`
+    : `<div class="dock-inner"><button class="btn" data-act="round">Saisir la manche ${n+1}</button></div>`;
+}
+
+function podium(r){
+  const top = r.slice(0,3); if(top.length<2) return '';
+  const order = top.length===3 ? [top[1],top[0],top[2]] : [top[1],top[0]];
+  const hts = {1:96,2:70,3:52};
+  return `<div class="podium">${order.map(x=>`<div class="step"><span class="who">${esc(x.p.name)}</span><span class="pts num">${x.total} pts</span><div class="block" style="--c:${x.p.color};height:${hts[x.rank]||44}px">${x.rank}</div></div>`).join('')}</div>`;
+}
+
+function chart(g){
+  const W=340,H=190,pl=34,pr=30,pt=12,pb=24;
+  const series = g.players.map(p=>{ let s=0; const pts=[0]; g.rounds.forEach(r=>{ s+=(r.scores[p.id]||0); pts.push(s); }); return {p,pts}; });
+  let lo = Math.min(0,...series.flatMap(s=>s.pts)), hi = Math.max(1,...series.flatMap(s=>s.pts));
+  if(g.target && hi >= g.target*0.6) hi = Math.max(hi, g.target);
+  const span = hi-lo; const stepRaw = span/4; const mag = Math.pow(10,Math.floor(Math.log10(stepRaw||1)));
+  const step = [1,2,5,10].map(m=>m*mag).find(s=>s>=stepRaw)||mag*10;
+  lo = Math.floor(lo/step)*step; hi = Math.ceil(hi/step)*step;
+  const n = g.rounds.length;
+  const x = i => pl + (i/n)*(W-pl-pr);
+  const y = v => pt + (1-(v-lo)/(hi-lo))*(H-pt-pb);
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Évolution des scores cumulés par manche">`;
+  for(let v=lo; v<=hi+1e-9; v+=step){ s += `<line class="grid" x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}"/><text x="${pl-6}" y="${y(v)+4}" text-anchor="end">${Math.round(v)}</text>`; }
+  if(g.target && g.target<=hi) s += `<line class="target" x1="${pl}" x2="${W-pr}" y1="${y(g.target)}" y2="${y(g.target)}"/>`;
+  const every = Math.ceil(n/8);
+  for(let i=0;i<=n;i+=every){ s += `<text x="${x(i)}" y="${H-6}" text-anchor="middle">${i}</text>`; }
+  series.forEach(se=>{
+    const d = se.pts.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1)).join(' ');
+    s += `<path d="${d}" fill="none" stroke="${se.p.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const lv = se.pts[n];
+    s += `<circle cx="${x(n)}" cy="${y(lv)}" r="4" fill="${se.p.color}"/>`;
+    s += `<text x="${x(n)+7}" y="${y(lv)+4}" style="fill:${se.p.color};font-weight:700">${initial(se.p.name)}</text>`;
+  });
+  return s + `</svg>`;
+}
+
+function roundsTable(g){
+  let h = `<div class="table-wrap"><table><thead><tr><th>#</th>${g.players.map(p=>`<th><i class="dot" style="--c:${p.color}"></i>${esc(p.name)}</th>`).join('')}</tr></thead><tbody>`;
+  g.rounds.forEach((r,i)=>{
+    const vals = g.players.map(p=>r.scores[p.id]||0);
+    const best = g.low ? Math.min(...vals) : Math.max(...vals);
+    h += `<tr data-act="edit" data-i="${i}"><td>${i+1}</td>${g.players.map(p=>{ const v=r.scores[p.id]||0; const m=r.marks&&r.marks[p.id];
+      return `<td class="${v===best?'best':''}">${v}${m==='x2'?'<span class="mark">×2</span>':m==='win'?'<span class="mark">★</span>':''}</td>`; }).join('')}</tr>`;
+  });
+  const t = totals(g);
+  h += `</tbody><tfoot><tr><td>Total</td>${g.players.map(p=>`<td>${t[p.id]}</td>`).join('')}</tr></tfoot></table></div>`;
+  return h;
+}
+
+/* ---------- Round entry sheet ---------- */
+let draft = null;
+function openEntry(editIndex){
+  const g = S.games[ui.gameId];
+  const existing = editIndex!=null ? g.rounds[editIndex] : null;
+  draft = { edit: editIndex, vals:{}, neg:{}, closer:null, winner:null, mode: g.mode };
+  if(existing){
+    if(existing.raw){ draft.vals = Object.assign({}, existing.raw.vals); draft.neg = Object.assign({}, existing.raw.neg||{}); draft.closer = existing.raw.closer||null; draft.winner = existing.raw.winner||null; }
+    else g.players.forEach(p=>{ const v = existing.scores[p.id]||0; draft.vals[p.id]=String(Math.abs(v)); draft.neg[p.id]=v<0; });
+  }
+  const p = PRESETS[g.type]||PRESETS.libre;
+  const t = totals(g);
+  let h = `<div class="sheet-head"><button class="icon-btn" data-act="close" aria-label="Fermer">✕</button><h2>${existing?'Corriger la manche '+(editIndex+1):'Manche '+(g.rounds.length+1)}</h2></div>
+  <div class="sheet-body"><div class="sheet-body-inner">`;
+  if(g.mode==='winner') h += `<p class="hint">Touche « A gagné » pour celui qui a vidé sa main, puis note les points des cartes qui restent aux autres.</p>`;
+  if(p.closer) h += `<p class="hint">Indique qui a terminé la manche : son score sera doublé automatiquement si besoin.</p>`;
+  g.players.forEach((pl,i)=>{
+    h += `<div class="entry" data-pid="${pl.id}"><div class="entry-top"><span class="avatar" style="--c:${pl.color}">${initial(pl.name)}</span>
+      <div class="who"><b>${esc(pl.name)}</b><small class="num">Total ${t[pl.id]}</small></div>
+      <div class="stepper">
+        ${p.neg?`<button type="button" class="sign" data-act="neg" data-pid="${pl.id}" aria-pressed="${!!draft.neg[pl.id]}" aria-label="Score négatif">±</button>`:''}
+        <button type="button" data-act="dec" data-pid="${pl.id}" aria-label="Moins un">−</button>
+        <input class="score-in" id="in-${pl.id}" data-pid="${pl.id}" data-i="${i}" inputmode="numeric" pattern="[0-9]*" enterkeyhint="${i===g.players.length-1?'done':'next'}" autocomplete="off" placeholder="0" value="${esc(draft.vals[pl.id]||'')}" aria-label="Points de ${esc(pl.name)}">
+        <button type="button" data-act="inc" data-pid="${pl.id}" aria-label="Plus un">+</button>
+      </div></div>
+      <div class="entry-extra">
+        ${g.mode==='winner'?`<button type="button" class="mini" data-act="winner" data-pid="${pl.id}" aria-pressed="${draft.winner===pl.id}">★ A gagné</button>`:''}
+        ${p.closer?`<button type="button" class="mini" data-act="closer" data-pid="${pl.id}" aria-pressed="${draft.closer===pl.id}">A terminé</button>`:''}
+        ${(p.chips||[]).map(c=>`<button type="button" class="mini" data-act="chip" data-v="${c}" data-pid="${pl.id}">+${c} Flip 7</button>`).join('')}
+        ${g.type==='flip7'?`<button type="button" class="mini" data-act="zero" data-pid="${pl.id}">Éliminé · 0</button>`:''}
+        <span class="preview num" id="pv-${pl.id}"></span>
+      </div></div>`;
+  });
+  h += `</div></div><div class="sheet-foot"><div class="sheet-foot-inner">
+    ${existing?`<div class="confirm"><button class="link" style="color:var(--danger)" data-act="delround">Supprimer cette manche</button></div>`:''}
+    <button class="btn" data-act="save">${existing?'Enregistrer la correction':'Valider la manche'}</button></div></div>`;
+  sheet.innerHTML = h; sheet.hidden = false; document.body.style.overflow='hidden';
+  refreshPreview();
+  if(!existing){ const first = sheet.querySelector('.score-in:not(:disabled)'); if(first) setTimeout(()=>first.focus({preventScroll:true}),60); }
+}
+function closeEntry(){ sheet.hidden = true; sheet.innerHTML=''; document.body.style.overflow=''; draft=null; }
+
+function readVal(pid){ const raw = String(draft.vals[pid]||'').replace(/[^0-9-]/g,''); let v = parseInt(raw,10); if(isNaN(v)) v=0; if(draft.neg[pid]) v = -Math.abs(v); return v; }
+
+function computeRound(g){
+  const scores = {}, marks = {};
+  g.players.forEach(p=>scores[p.id]=readVal(p.id));
+  if(g.mode==='winner' && draft.winner){
+    const sum = g.players.filter(p=>p.id!==draft.winner).reduce((a,p)=>a+Math.abs(scores[p.id]),0);
+    g.players.forEach(p=>scores[p.id]=0); scores[draft.winner]=sum; marks[draft.winner]='win';
+  }
+  const pr = PRESETS[g.type]||{};
+  if(pr.closer && draft.closer){
+    const c = draft.closer, cv = scores[c];
+    const othersMin = Math.min(...g.players.filter(p=>p.id!==c).map(p=>scores[p.id]));
+    if(cv>0 && othersMin<=cv){ scores[c]=cv*2; marks[c]='x2'; }
+  }
+  return { scores, marks, raw:{ vals:Object.assign({},draft.vals), neg:Object.assign({},draft.neg), closer:draft.closer, winner:draft.winner } };
+}
+
+function refreshPreview(){
+  const g = S.games[ui.gameId]; if(!g||!draft) return;
+  const res = computeRound(g); const t = totals(g);
+  if(draft.edit!=null){ const old = g.rounds[draft.edit]; g.players.forEach(p=>t[p.id]-= (old.scores[p.id]||0)); }
+  g.players.forEach(p=>{
+    const el = document.getElementById('pv-'+p.id); if(!el) return;
+    const v = res.scores[p.id]; const nt = t[p.id]+v;
+    const tag = res.marks[p.id]==='x2'?' (×2)':res.marks[p.id]==='win'?' ★':'';
+    el.textContent = `${sign(v)}${tag} → ${nt}`;
+    el.classList.toggle('up', !!(g.target && nt>=g.target));
+    const box = sheet.querySelector(`.entry[data-pid="${p.id}"]`);
+    if(box) box.classList.toggle('is-winner', draft.winner===p.id);
+    const inp = document.getElementById('in-'+p.id);
+    if(inp && g.mode==='winner') inp.disabled = draft.winner===p.id;
+  });
+  const save = sheet.querySelector('[data-act="save"]');
+  if(save && g.mode==='winner') save.disabled = !draft.winner;
+}
+
+function saveRound(){
+  const g = S.games[ui.gameId]; if(!g||!draft) return;
+  const res = computeRound(g);
+  const round = { scores: res.scores, marks: res.marks, raw: res.raw, at: Date.now() };
+  if(draft.edit!=null) g.rounds[draft.edit] = round; else g.rounds.push(round);
+  if(g.status==='live' && reachedTarget(g)){ g.status='done'; g.finishedAt=Date.now(); }
+  persistGame(g); closeEntry(); ui.confirmDelete=false; render();
+  try{ navigator.vibrate && navigator.vibrate(g.status==='done'?[30,60,30]:15); }catch(e){}
+  if(g.status==='done') window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ---------- Demo game ---------- */
+function makeDemo(){
+  const names = [['Léa','#E2552B'],['Hugo','#2F80C2'],['Inès','#E39B1B'],['Tom','#2E9E62']];
+  const players = names.map(([n,c])=>({id:uid(),name:n+' (exemple)',color:c}));
+  const data = [[12,25,8,31],[-3,14,22,9],[18,6,11,27],[4,30,15,12],[21,9,2,18],[7,16,25,6]];
+  const rounds = data.map(row=>{ const sc={}; players.forEach((p,i)=>sc[p.id]=row[i]); return {scores:sc,marks:{},at:Date.now()}; });
+  rounds[2].marks[players[3].id]='x2';
+  const g = { id:uid(), type:'skyjo', name:'', target:100, low:true, mode:'points', players, rounds, status:'done', createdAt:Date.now()-3600e3, finishedAt:Date.now()-60e3 };
+  persistGame(g); ui.view='game'; ui.gameId=g.id; render(); window.scrollTo(0,0);
+}
+
+/* ---------- Backup (installed app only) ---------- */
+async function exportData(){
+  const name = 'tablee-sauvegarde-'+new Date().toISOString().slice(0,10)+'.json';
+  const blob = new Blob([JSON.stringify({app:'tablee',version:1,exportedAt:Date.now(),players:S.players,games:S.games},null,1)],{type:'application/json'});
+  try{
+    const file = new File([blob], name, {type:'application/json'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:'Sauvegarde Tablée'}); ui.flash='Sauvegarde prête.'; render(); return; }
+  }catch(e){ if(e && e.name==='AbortError') return; }
+  const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),2000);
+  ui.flash='Sauvegarde téléchargée.'; render();
+}
+function importData(file){
+  const fr = new FileReader();
+  fr.onload = ()=>{
+    try{
+      const d = JSON.parse(fr.result); if(!d || !d.games) throw 0;
+      let n=0; Object.values(d.games).forEach(g=>{ if(!g||!g.id||!g.players) return; const loc=S.games[g.id]; if(!loc || (g.updatedAt||0)>(loc.updatedAt||0)){ S.games[g.id]=g; n++; } });
+      (d.players||[]).forEach(p=>{ if(p&&p.id&&!S.players.find(x=>x.id===p.id)) S.players.push(p); });
+      lsWrite(); persistPlayers(); ui.flash = n ? n+' partie'+(n>1?'s':'')+' importée'+(n>1?'s':'')+'.' : 'Rien de nouveau dans ce fichier.';
+    }catch(e){ ui.flash='Ce fichier n’est pas une sauvegarde Tablée.'; }
+    render();
+  };
+  fr.readAsText(file);
+}
+
+/* ---------- Events ---------- */
+document.addEventListener('click', e=>{
+  const b = e.target.closest('[data-act]'); if(!b) return;
+  const a = b.dataset.act; const g = S.games[ui.gameId];
+  switch(a){
+    case 'home': ui.flash=''; ui.view='home'; ui.confirmDelete=false; render(); window.scrollTo(0,0); break;
+    case 'history': ui.view='history'; render(); window.scrollTo(0,0); break;
+    case 'new': startSetup(b.dataset.type); break;
+    case 'open': ui.view='game'; ui.gameId=b.dataset.id; ui.confirmDelete=false; render(); window.scrollTo(0,0); break;
+    case 'demo': makeDemo(); break;
+    case 'export': exportData(); break;
+    case 'stat': ui.statFilter=b.dataset.f; render(); break;
+    case 'pick': { const id=b.dataset.id; const s=ui.setup; const i=s.selected.indexOf(id); if(i>=0) s.selected.splice(i,1); else s.selected.push(id); render(); break; }
+    case 'unpick': { const s=ui.setup; s.selected=s.selected.filter(x=>x!==b.dataset.id); render(); break; }
+    case 'up': { const s=ui.setup; const i=+b.dataset.i; if(i>0){ [s.selected[i-1],s.selected[i]]=[s.selected[i],s.selected[i-1]]; render(); } break; }
+    case 'start': startGame(); break;
+    case 'round': openEntry(null); break;
+    case 'edit': openEntry(+b.dataset.i); break;
+    case 'close': closeEntry(); break;
+    case 'save': saveRound(); break;
+    case 'delround': if(g&&draft&&draft.edit!=null){ g.rounds.splice(draft.edit,1); persistGame(g); closeEntry(); render(); } break;
+    case 'undo': if(g&&g.rounds.length){ g.rounds.pop(); persistGame(g); render(); } break;
+    case 'finish': if(g){ g.status='done'; g.finishedAt=Date.now(); persistGame(g); render(); window.scrollTo({top:0,behavior:'smooth'}); } break;
+    case 'reopen': if(g){ g.status='live'; delete g.finishedAt; persistGame(g); render(); } break;
+    case 'replay': if(g){ g.players.forEach(p=>{ if(!S.players.find(x=>x.id===p.id)) S.players.push({...p}); }); persistPlayers(); startSetup(g.type, g); } break;
+    case 'askdel': ui.confirmDelete=true; render(); break;
+    case 'nodel': ui.confirmDelete=false; render(); break;
+    case 'del': removeGame(ui.gameId); ui.confirmDelete=false; ui.view='home'; render(); window.scrollTo(0,0); break;
+    case 'inc': case 'dec': { const pid=b.dataset.pid; let v=readVal(pid)+(a==='inc'?1:-1);
+      draft.neg[pid] = v<0 && !!(PRESETS[g.type]||{}).neg; if(v<0 && !draft.neg[pid]) v=0;
+      draft.vals[pid]=String(Math.abs(v)); const inp=document.getElementById('in-'+pid); inp.value=String(Math.abs(v));
+      const sg=sheet.querySelector(`.sign[data-pid="${pid}"]`); if(sg) sg.setAttribute('aria-pressed',draft.neg[pid]); refreshPreview(); break; }
+    case 'neg': { const pid=b.dataset.pid; draft.neg[pid]=!draft.neg[pid]; b.setAttribute('aria-pressed',draft.neg[pid]); refreshPreview(); break; }
+    case 'chip': { const pid=b.dataset.pid; const v=readVal(pid)+(+b.dataset.v); draft.vals[pid]=String(Math.abs(v)); document.getElementById('in-'+pid).value=String(Math.abs(v)); refreshPreview(); break; }
+    case 'zero': { const pid=b.dataset.pid; draft.vals[pid]='0'; draft.neg[pid]=false; document.getElementById('in-'+pid).value='0'; refreshPreview(); break; }
+    case 'winner': { const pid=b.dataset.pid; draft.winner = draft.winner===pid?null:pid;
+      sheet.querySelectorAll('[data-act="winner"]').forEach(x=>x.setAttribute('aria-pressed', x.dataset.pid===draft.winner));
+      if(draft.winner){ draft.vals[pid]=''; document.getElementById('in-'+pid).value=''; } refreshPreview(); break; }
+    case 'closer': { const pid=b.dataset.pid; draft.closer = draft.closer===pid?null:pid;
+      sheet.querySelectorAll('[data-act="closer"]').forEach(x=>x.setAttribute('aria-pressed', x.dataset.pid===draft.closer)); refreshPreview(); break; }
+  }
+});
+
+document.addEventListener('input', e=>{
+  const t = e.target;
+  if(t.classList.contains('score-in') && draft){
+    let v = t.value;
+    if(v.includes('-')){ const g=S.games[ui.gameId]; if((PRESETS[g.type]||{}).neg){ draft.neg[t.dataset.pid]=!draft.neg[t.dataset.pid]; const sg=sheet.querySelector(`.sign[data-pid="${t.dataset.pid}"]`); if(sg) sg.setAttribute('aria-pressed',draft.neg[t.dataset.pid]); } v=v.replace(/-/g,''); t.value=v; }
+    v = v.replace(/[^0-9]/g,''); if(v!==t.value) t.value=v;
+    draft.vals[t.dataset.pid]=v; refreshPreview();
+  } else if(t.id==='g-name' && ui.setup){ ui.setup.name=t.value; }
+  else if(t.id==='new-player' && ui.setup){ ui.setup.newName=t.value; }
+  else if(t.id==='g-target' && ui.setup){ const v=parseInt(t.value.replace(/[^0-9]/g,''),10); ui.setup.target = isNaN(v)?null:v; }
+});
+document.addEventListener('change', e=>{
+  if(e.target.id==='import-file' && e.target.files && e.target.files[0]){ importData(e.target.files[0]); return; }
+  if(e.target.id==='g-low' && ui.setup){ ui.setup.low = e.target.checked; render(); }
+});
+document.addEventListener('keydown', e=>{
+  const t = e.target;
+  if(e.key==='Enter' && t.classList && t.classList.contains('score-in')){
+    e.preventDefault();
+    const ins = Array.from(sheet.querySelectorAll('.score-in:not(:disabled)'));
+    const i = ins.indexOf(t);
+    if(i<ins.length-1) ins[i+1].focus(); else saveRound();
+  }
+  if(e.key==='Escape' && !sheet.hidden) closeEntry();
+});
+document.addEventListener('focusin', e=>{ if(e.target.classList && e.target.classList.contains('score-in')) e.target.select(); });
+document.addEventListener('submit', e=>{
+  if(e.target.id==='add-form'){ e.preventDefault();
+    const pl = addPlayer(ui.setup.newName||''); if(pl && !ui.setup.selected.includes(pl.id)) ui.setup.selected.push(pl.id);
+    ui.setup.newName=''; render(); const inp=document.getElementById('new-player'); if(inp) inp.focus(); }
+});
+
+/* ---------- Keep the screen awake during a game ---------- */
+let wake = null;
+async function manageWakeLock(){
+  const want = ui.view==='game' && S.games[ui.gameId] && S.games[ui.gameId].status==='live';
+  try{
+    if(want && !wake && navigator.wakeLock){ wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release',()=>{ wake=null; }); }
+    else if(!want && wake){ await wake.release(); wake=null; }
+  }catch(e){ wake=null; }
+}
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') manageWakeLock(); });
+
+/* ---------- Boot ---------- */
+lsRead();
+render();
+connectRemote();
+})();
+</script>
+<script>
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
+</script>
+</body>
+</html>
