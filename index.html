@@ -190,7 +190,10 @@ tfoot td{font-weight:800;font-family:var(--display);font-size:17px;border-bottom
 .entry-top{cursor:pointer}
 .entry.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
 .entry.active .score-box{border-color:var(--accent);background:var(--accent-soft)}
-.keypad{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.keypad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.foot-row{display:flex;gap:8px}
+.foot-row .btn{flex:2}
+.foot-row .btn.ghost{flex:1}
 .keypad button,.calc-grid button{height:48px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-family:var(--display);font-size:23px;font-weight:700;touch-action:manipulation}
 .keypad button:active,.calc-grid button:active{background:var(--accent-soft)}
 .keypad .op,.calc-grid .op{font-size:17px;color:var(--accent)}
@@ -1023,7 +1026,7 @@ function openEntry(editIndex){
     <div id="keypad-zone">${keypadHtml(g)}</div>
     <div id="foot-actions" style="display:flex;flex-direction:column;gap:8px">
     ${existing?`<div class="confirm"><button class="link" style="color:var(--danger)" data-act="delround">Supprimer cette manche</button></div>`:''}
-    <button class="btn" data-act="save">${existing?'Enregistrer la correction':'Valider la manche'}</button></div></div></div>`;
+    <div class="foot-row"><button type="button" class="btn ghost" data-act="key" data-k="next">Suivant</button><button class="btn" data-act="save">${existing?'Enregistrer':'Valider la manche'}</button></div></div></div></div>`;
   sheet.innerHTML = h; sheet.hidden = false; document.body.style.overflow='hidden';
   g.players.forEach(pl=>updBox(pl.id));
   refreshPreview();
@@ -1033,10 +1036,10 @@ function keypadHtml(g){
   const p = PRESETS[g.type]||PRESETS.libre;
   const k = (key, label, cls, aria) => `<button type="button" class="${cls||''}" data-act="key" data-k="${key}"${aria?` aria-label="${aria}"`:''}>${label}</button>`;
   return `<div class="keypad" role="group" aria-label="Pavé numérique">
-    ${k('1','1')}${k('2','2')}${k('3','3')}${k('back','⌫','op','Effacer')}
-    ${k('4','4')}${k('5','5')}${k('6','6')}${k('p5','+5','op')}
-    ${k('7','7')}${k('8','8')}${k('9','9')}${k('p10','+10','op')}
-    ${p.neg?k('sign','±','op','Changer le signe'):k('same','Même','op small','Même score que la manche d’avant')}${k('0','0')}${p.neg?k('same','Même','op small','Même score que la manche d’avant'):k('p1','+1','op')}${k('next','Suivant','go')}
+    ${k('1','1')}${k('2','2')}${k('3','3')}
+    ${k('4','4')}${k('5','5')}${k('6','6')}
+    ${k('7','7')}${k('8','8')}${k('9','9')}
+    ${p.neg?k('sign','±','op','Changer le signe'):'<span></span>'}${k('0','0')}${k('back','⌫','op','Effacer')}
   </div>`;
 }
 function closeEntry(){ sheet.hidden = true; sheet.innerHTML=''; document.body.style.overflow=''; draft=null; }
@@ -1054,7 +1057,7 @@ function setActive(pid, noScroll){
   draft.active = pid; draft.fresh = true;
   sheet.querySelectorAll('.entry').forEach(e=>e.classList.toggle('active', e.dataset.pid===pid));
   const ids = enabledPids(); const go = sheet.querySelector('[data-k="next"]');
-  if(go) go.textContent = ids.indexOf(pid)===ids.length-1 ? 'Valider' : 'Suivant';
+  if(go) go.hidden = ids.indexOf(pid)===ids.length-1;
   const box = sheet.querySelector(`.entry[data-pid="${pid}"]`);
   if(box && !noScroll) box.scrollIntoView({block:'nearest', behavior:'smooth'});
 }
@@ -1417,7 +1420,7 @@ document.addEventListener('click', e=>{
     case 'calc-add': if(draft&&draft.calc){ draft.calc.picks.push(+b.dataset.i); renderCalc(); } break;
     case 'calc-rm': if(draft&&draft.calc){ draft.calc.picks.splice(+b.dataset.n,1); renderCalc(); } break;
     case 'calc-cancel': if(draft&&draft.calc) closeCalc(); break;
-    case 'calc-ok': if(draft&&draft.calc){ const pid=draft.calc.pid; setVal(pid, deckTotal(g.type, draft.calc.picks)); closeCalc(); nextPlayer(); } break;
+    case 'calc-ok': if(draft&&draft.calc){ const pid=draft.calc.pid; setVal(pid, deckTotal(g.type, draft.calc.picks)); closeCalc(); const ids=enabledPids(); const i=ids.indexOf(pid); if(i>=0 && i<ids.length-1) setActive(ids[i+1]); } break;
     case 'chip': { const pid=b.dataset.pid; setVal(pid, readVal(pid)+(+b.dataset.v)); setActive(pid, true); draft.fresh=false; break; }
     case 'zero': { const pid=b.dataset.pid; setVal(pid, 0); setActive(pid, true); break; }
     case 'winner': { const pid=b.dataset.pid; draft.winner = draft.winner===pid?null:pid;
