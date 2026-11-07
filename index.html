@@ -983,7 +983,7 @@ const num = v => ({l:String(v), v});
 const DECKS = {
   skyjo:{ hint:'Touche chaque carte qui te reste.', cards:[-2,-1,0,1,2,3,4,5,6,7,8,9,10,11,12].map(num) },
   uno:{ hint:'Touche les cartes restées en main.', cards:[0,1,2,3,4,5,6,7,8,9].map(num).concat([{l:'+2',v:20},{l:'Inversion',v:20},{l:'Passe',v:20},{l:'Joker',v:50},{l:'+4',v:50}]) },
-  flip7:{ hint:'Touche tes cartes. Le ×2 double les cartes chiffres, pas les bonus.', cards:[0,1,2,3,4,5,6,7,8,9,10,11,12].map(num).concat([{l:'+2',v:2,k:'m'},{l:'+4',v:4,k:'m'},{l:'+6',v:6,k:'m'},{l:'+8',v:8,k:'m'},{l:'+10',v:10,k:'m'},{l:'×2',v:0,k:'x2'},{l:'Flip 7 +15',v:15,k:'m'}]) },
+  flip7:{ hint:'Touche tes cartes. Le ×2 double les cartes chiffres, pas les bonus. Le +15 Flip 7 reste sous ton nom.', cards:[1,2,3,4,5,6,7,8,9,10,11,12].map(num).concat([{l:'+2',v:2,k:'m'},{l:'+4',v:4,k:'m'},{l:'+6',v:6,k:'m'},{l:'+8',v:8,k:'m'},{l:'+10',v:10,k:'m'},{l:'×2',v:0,k:'x2'}]) },
   sixqp:{ hint:'Touche chaque carte ramassée selon son nombre de têtes.', cards:[1,2,3,5,7].map(v=>({l:v+' 🐮',v})) }
 };
 function deckTotal(type, picks){
