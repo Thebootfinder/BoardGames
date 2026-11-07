@@ -1485,7 +1485,17 @@ checkHash();
 })();
 </script>
 <script>
-if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').then(r=>r.update()).catch(()=>{}));
+  // A new version took over: reload once, unless a round is being typed.
+  let had = !!navigator.serviceWorker.controller, done = false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(!had){ had = true; return; } if(done) return; done = true;
+    const busy = ()=>{ const s=document.getElementById('sheet'); return s && !s.hidden; };
+    const go = ()=>{ if(busy()) setTimeout(go, 2000); else location.reload(); };
+    go();
+  });
+}
 try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
 </script>
 </body>
