@@ -184,9 +184,26 @@ tfoot td{font-weight:800;font-family:var(--display);font-size:17px;border-bottom
 .stepper button{width:40px;height:46px;border-radius:11px;border:1.5px solid var(--line);background:var(--bg);font-size:22px;font-weight:700;line-height:1}
 .stepper .sign{width:40px;font-size:17px}
 .stepper .sign[aria-pressed="true"]{background:var(--danger-soft);border-color:var(--danger);color:var(--danger)}
-.score-in{width:72px;height:46px;text-align:center;font-family:var(--display);font-weight:800;font-size:24px;border:1.5px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);font-variant-numeric:tabular-nums}
-.score-in:focus{border-color:var(--accent);outline:none}
-.score-in:disabled{opacity:.4}
+.score-box{min-width:86px;height:48px;padding:0 12px;text-align:center;font-family:var(--display);font-weight:800;font-size:26px;border:1.5px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink)}
+.score-box.empty{color:var(--muted)}
+.score-box:disabled{opacity:.35}
+.entry-top{cursor:pointer}
+.entry.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.entry.active .score-box{border-color:var(--accent);background:var(--accent-soft)}
+.keypad{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.keypad button,.calc-grid button{height:48px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-family:var(--display);font-size:23px;font-weight:700;touch-action:manipulation}
+.keypad button:active,.calc-grid button:active{background:var(--accent-soft)}
+.keypad .op,.calc-grid .op{font-size:17px;color:var(--accent)}
+.keypad .op.small{font-size:15px}
+.keypad .go{background:var(--accent);color:var(--accent-ink);border:0;font-size:17px}
+.calc{display:flex;flex-direction:column;gap:8px}
+.calc-total{font-family:var(--display);font-weight:800;font-size:26px}
+.calc-picked{display:flex;flex-wrap:wrap;gap:6px;min-height:34px;align-items:center;max-height:80px;overflow-y:auto}
+.calc-picked .hint{font-size:13px}
+.calc-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.calc-grid button{font-size:19px;height:46px}
+.calc-grid .op{font-size:15px}
+.calc-grid .txt{font-size:13px;line-height:1.1;padding:0 2px}
 .entry-extra{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .mini{border:1.5px solid var(--line);background:var(--bg);border-radius:99px;padding:5px 12px;font-size:14px;font-weight:700;min-height:34px}
 .mini[aria-pressed="true"]{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 18%,var(--surface))}
@@ -960,12 +977,25 @@ function roundsTable(g){
   return h;
 }
 
-/* ---------- Round entry sheet ---------- */
+/* ---------- Round entry sheet: built-in keypad + card counter ---------- */
 let draft = null;
+const num = v => ({l:String(v), v});
+const DECKS = {
+  skyjo:{ hint:'Touche chaque carte qui te reste.', cards:[-2,-1,0,1,2,3,4,5,6,7,8,9,10,11,12].map(num) },
+  uno:{ hint:'Touche les cartes restées en main.', cards:[0,1,2,3,4,5,6,7,8,9].map(num).concat([{l:'+2',v:20},{l:'Inversion',v:20},{l:'Passe',v:20},{l:'Joker',v:50},{l:'+4',v:50}]) },
+  flip7:{ hint:'Touche tes cartes. Le ×2 double les cartes chiffres, pas les bonus.', cards:[0,1,2,3,4,5,6,7,8,9,10,11,12].map(num).concat([{l:'+2',v:2,k:'m'},{l:'+4',v:4,k:'m'},{l:'+6',v:6,k:'m'},{l:'+8',v:8,k:'m'},{l:'+10',v:10,k:'m'},{l:'×2',v:0,k:'x2'},{l:'Flip 7 +15',v:15,k:'m'}]) },
+  sixqp:{ hint:'Touche chaque carte ramassée selon son nombre de têtes.', cards:[1,2,3,5,7].map(v=>({l:v+' 🐮',v})) }
+};
+function deckTotal(type, picks){
+  const cards = picks.map(i=>DECKS[type].cards[i]);
+  if(type==='flip7'){ let n=0, m=0, x=false; cards.forEach(c=>{ if(c.k==='x2') x=true; else if(c.k==='m') m+=c.v; else n+=c.v; }); return (x?n*2:n)+m; }
+  return cards.reduce((a,c)=>a+c.v,0);
+}
+
 function openEntry(editIndex){
   const g = S.games[ui.gameId];
   const existing = editIndex!=null ? g.rounds[editIndex] : null;
-  draft = { edit: editIndex, vals:{}, neg:{}, closer:null, winner:null, mode: g.mode };
+  draft = { edit: editIndex, vals:{}, neg:{}, closer:null, winner:null, mode: g.mode, active:null, fresh:true, calc:null };
   if(existing){
     if(existing.raw){ draft.vals = Object.assign({}, existing.raw.vals); draft.neg = Object.assign({}, existing.raw.neg||{}); draft.closer = existing.raw.closer||null; draft.winner = existing.raw.winner||null; }
     else g.players.forEach(p=>{ const v = existing.scores[p.id]||0; draft.vals[p.id]=String(Math.abs(v)); draft.neg[p.id]=v<0; });
@@ -976,16 +1006,12 @@ function openEntry(editIndex){
   <div class="sheet-body"><div class="sheet-body-inner">`;
   if(g.mode==='winner') h += `<p class="hint">Touche « A gagné » pour celui qui a vidé sa main, puis note les points des cartes qui restent aux autres.</p>`;
   if(p.closer) h += `<p class="hint">Indique qui a terminé la manche : son score sera doublé automatiquement si besoin.</p>`;
-  g.players.forEach((pl,i)=>{
-    h += `<div class="entry" data-pid="${pl.id}"><div class="entry-top"><span class="avatar" style="--c:${pl.color}">${initial(pl.name)}</span>
+  g.players.forEach(pl=>{
+    h += `<div class="entry" data-pid="${pl.id}"><div class="entry-top" data-act="focus" data-pid="${pl.id}"><span class="avatar" style="--c:${pl.color}">${initial(pl.name)}</span>
       <div class="who"><b>${esc(pl.name)}</b><small class="num">Total ${t[pl.id]}</small></div>
-      <div class="stepper">
-        ${p.neg?`<button type="button" class="sign" data-act="neg" data-pid="${pl.id}" aria-pressed="${!!draft.neg[pl.id]}" aria-label="Score négatif">±</button>`:''}
-        <button type="button" data-act="dec" data-pid="${pl.id}" aria-label="Moins un">−</button>
-        <input class="score-in" id="in-${pl.id}" data-pid="${pl.id}" data-i="${i}" inputmode="numeric" pattern="[0-9]*" enterkeyhint="${i===g.players.length-1?'done':'next'}" autocomplete="off" placeholder="0" value="${esc(draft.vals[pl.id]||'')}" aria-label="Points de ${esc(pl.name)}">
-        <button type="button" data-act="inc" data-pid="${pl.id}" aria-label="Plus un">+</button>
-      </div></div>
+      <button type="button" class="score-box num" id="in-${pl.id}" data-act="focus" data-pid="${pl.id}" aria-label="Points de ${esc(pl.name)}"></button></div>
       <div class="entry-extra">
+        ${DECKS[g.type]?`<button type="button" class="mini" data-act="calc" data-pid="${pl.id}">🃏 Compter</button>`:''}
         ${g.mode==='winner'?`<button type="button" class="mini" data-act="winner" data-pid="${pl.id}" aria-pressed="${draft.winner===pl.id}">★ A gagné</button>`:''}
         ${p.closer?`<button type="button" class="mini" data-act="closer" data-pid="${pl.id}" aria-pressed="${draft.closer===pl.id}">A terminé</button>`:''}
         ${(p.chips||[]).map(c=>`<button type="button" class="mini" data-act="chip" data-v="${c}" data-pid="${pl.id}">+${c} Flip 7</button>`).join('')}
@@ -994,13 +1020,92 @@ function openEntry(editIndex){
       </div></div>`;
   });
   h += `</div></div><div class="sheet-foot"><div class="sheet-foot-inner">
+    <div id="keypad-zone">${keypadHtml(g)}</div>
+    <div id="foot-actions" style="display:flex;flex-direction:column;gap:8px">
     ${existing?`<div class="confirm"><button class="link" style="color:var(--danger)" data-act="delround">Supprimer cette manche</button></div>`:''}
-    <button class="btn" data-act="save">${existing?'Enregistrer la correction':'Valider la manche'}</button></div></div>`;
+    <button class="btn" data-act="save">${existing?'Enregistrer la correction':'Valider la manche'}</button></div></div></div>`;
   sheet.innerHTML = h; sheet.hidden = false; document.body.style.overflow='hidden';
+  g.players.forEach(pl=>updBox(pl.id));
   refreshPreview();
-  if(!existing){ const first = sheet.querySelector('.score-in:not(:disabled)'); if(first) setTimeout(()=>first.focus({preventScroll:true}),60); }
+  const first = enabledPids()[0]; if(first) setActive(first, true);
+}
+function keypadHtml(g){
+  const p = PRESETS[g.type]||PRESETS.libre;
+  const k = (key, label, cls, aria) => `<button type="button" class="${cls||''}" data-act="key" data-k="${key}"${aria?` aria-label="${aria}"`:''}>${label}</button>`;
+  return `<div class="keypad" role="group" aria-label="Pavé numérique">
+    ${k('1','1')}${k('2','2')}${k('3','3')}${k('back','⌫','op','Effacer')}
+    ${k('4','4')}${k('5','5')}${k('6','6')}${k('p5','+5','op')}
+    ${k('7','7')}${k('8','8')}${k('9','9')}${k('p10','+10','op')}
+    ${p.neg?k('sign','±','op','Changer le signe'):k('same','Même','op small','Même score que la manche d’avant')}${k('0','0')}${p.neg?k('same','Même','op small','Même score que la manche d’avant'):k('p1','+1','op')}${k('next','Suivant','go')}
+  </div>`;
 }
 function closeEntry(){ sheet.hidden = true; sheet.innerHTML=''; document.body.style.overflow=''; draft=null; }
+
+function enabledPids(){ const g = S.games[ui.gameId]; return g.players.map(p=>p.id).filter(id=>!(g.mode==='winner' && draft.winner===id)); }
+function updBox(pid){
+  const el = document.getElementById('in-'+pid); if(!el) return;
+  const raw = draft.vals[pid]; const empty = raw===undefined || raw===null || raw==='';
+  el.textContent = empty ? '0' : (draft.neg[pid] && raw!=='0' ? '−' : '')+raw;
+  el.classList.toggle('empty', empty);
+  const g = S.games[ui.gameId]; el.disabled = g.mode==='winner' && draft.winner===pid;
+}
+function setVal(pid, v){ draft.neg[pid] = v<0; draft.vals[pid] = String(Math.abs(v)); updBox(pid); refreshPreview(); }
+function setActive(pid, noScroll){
+  draft.active = pid; draft.fresh = true;
+  sheet.querySelectorAll('.entry').forEach(e=>e.classList.toggle('active', e.dataset.pid===pid));
+  const ids = enabledPids(); const go = sheet.querySelector('[data-k="next"]');
+  if(go) go.textContent = ids.indexOf(pid)===ids.length-1 ? 'Valider' : 'Suivant';
+  const box = sheet.querySelector(`.entry[data-pid="${pid}"]`);
+  if(box && !noScroll) box.scrollIntoView({block:'nearest', behavior:'smooth'});
+}
+function nextPlayer(){
+  const ids = enabledPids(); const i = ids.indexOf(draft.active);
+  if(i>=0 && i<ids.length-1) setActive(ids[i+1]); else saveRound();
+}
+function lastValue(g, pid){
+  const idx = draft.edit!=null ? draft.edit-1 : g.rounds.length-1; const r = g.rounds[idx]; if(!r) return 0;
+  if(r.raw && r.raw.vals){ const v = parseInt(r.raw.vals[pid]||'0',10)||0; return r.raw.neg && r.raw.neg[pid] ? -v : v; }
+  return r.scores[pid]||0;
+}
+function pressKey(k){
+  const pid = draft && draft.active; if(!pid) return;
+  const g = S.games[ui.gameId]; const p = PRESETS[g.type]||PRESETS.libre;
+  if(k==='next'){ nextPlayer(); return; }
+  if(g.mode==='winner' && draft.winner===pid) return;
+  let raw = draft.vals[pid]||'';
+  if(/^\d$/.test(k)){
+    if(draft.fresh){ raw = ''; draft.neg[pid] = false; }
+    raw = (raw+k).replace(/^0+(?=\d)/,'').slice(0,4); draft.vals[pid] = raw;
+  } else if(k==='back'){ draft.vals[pid] = draft.fresh ? '' : raw.slice(0,-1); if(!draft.vals[pid]) draft.neg[pid]=false; }
+  else if(k==='sign'){ if(p.neg) draft.neg[pid] = !draft.neg[pid]; }
+  else if(k==='p5'||k==='p10'||k==='p1'){ const v = readVal(pid)+(k==='p5'?5:k==='p10'?10:1); draft.neg[pid] = v<0; draft.vals[pid] = String(Math.abs(v)); }
+  else if(k==='same'){ const v = lastValue(g, pid); draft.neg[pid] = v<0 && !!p.neg; draft.vals[pid] = String(Math.abs(v)); }
+  draft.fresh = false;
+  updBox(pid); refreshPreview();
+}
+
+function openCalc(pid){
+  const g = S.games[ui.gameId]; if(!DECKS[g.type]) return;
+  if(g.mode==='winner' && draft.winner===pid) return;
+  setActive(pid);
+  draft.calc = { pid, picks:[] }; renderCalc();
+}
+function renderCalc(){
+  const g = S.games[ui.gameId]; const c = draft.calc; const deck = DECKS[g.type];
+  const pl = g.players.find(p=>p.id===c.pid); const total = deckTotal(g.type, c.picks);
+  const zone = document.getElementById('keypad-zone'); const acts = document.getElementById('foot-actions');
+  if(acts) acts.hidden = true;
+  zone.innerHTML = `<div class="calc"><div class="row"><b class="grow">Cartes de ${esc(pl.name)}</b><span class="calc-total num">= ${total}</span></div>
+    <div class="calc-picked">${c.picks.length ? c.picks.map((i,n)=>`<button type="button" class="mini" data-act="calc-rm" data-n="${n}" aria-label="Retirer ${esc(deck.cards[i].l)}">${esc(deck.cards[i].l)} ✕</button>`).join('') : `<span class="hint">${esc(deck.hint)}</span>`}</div>
+    <div class="calc-grid">${deck.cards.map((card,i)=>`<button type="button" class="${card.k?'op':''}${card.l.length>4?' txt':''}" data-act="calc-add" data-i="${i}">${esc(card.l)}</button>`).join('')}</div>
+    <div class="btn-row"><button type="button" class="btn ghost" data-act="calc-cancel" style="min-height:46px;flex:0 1 auto">Annuler</button><button type="button" class="btn" data-act="calc-ok" style="min-height:46px">Mettre ${total} pts</button></div></div>`;
+}
+function closeCalc(){
+  const g = S.games[ui.gameId]; draft.calc = null;
+  document.getElementById('keypad-zone').innerHTML = keypadHtml(g);
+  const acts = document.getElementById('foot-actions'); if(acts) acts.hidden = false;
+  setActive(draft.active, true);
+}
 
 function readVal(pid){ const raw = String(draft.vals[pid]||'').replace(/[^0-9-]/g,''); let v = parseInt(raw,10); if(isNaN(v)) v=0; if(draft.neg[pid]) v = -Math.abs(v); return v; }
 
@@ -1032,8 +1137,7 @@ function refreshPreview(){
     el.classList.toggle('up', !!(g.target && nt>=g.target));
     const box = sheet.querySelector(`.entry[data-pid="${p.id}"]`);
     if(box) box.classList.toggle('is-winner', draft.winner===p.id);
-    const inp = document.getElementById('in-'+p.id);
-    if(inp && g.mode==='winner') inp.disabled = draft.winner===p.id;
+    if(g.mode==='winner') updBox(p.id);
   });
   const save = sheet.querySelector('[data-act="save"]');
   if(save && g.mode==='winner') save.disabled = !draft.winner;
@@ -1307,16 +1411,21 @@ document.addEventListener('click', e=>{
     case 'askdel': ui.confirmDelete=true; render(); break;
     case 'nodel': ui.confirmDelete=false; render(); break;
     case 'del': removeGame(ui.gameId); ui.confirmDelete=false; ui.view='home'; render(); window.scrollTo(0,0); break;
-    case 'inc': case 'dec': { const pid=b.dataset.pid; let v=readVal(pid)+(a==='inc'?1:-1);
-      draft.neg[pid] = v<0 && !!(PRESETS[g.type]||{}).neg; if(v<0 && !draft.neg[pid]) v=0;
-      draft.vals[pid]=String(Math.abs(v)); const inp=document.getElementById('in-'+pid); inp.value=String(Math.abs(v));
-      const sg=sheet.querySelector(`.sign[data-pid="${pid}"]`); if(sg) sg.setAttribute('aria-pressed',draft.neg[pid]); refreshPreview(); break; }
-    case 'neg': { const pid=b.dataset.pid; draft.neg[pid]=!draft.neg[pid]; b.setAttribute('aria-pressed',draft.neg[pid]); refreshPreview(); break; }
-    case 'chip': { const pid=b.dataset.pid; const v=readVal(pid)+(+b.dataset.v); draft.vals[pid]=String(Math.abs(v)); document.getElementById('in-'+pid).value=String(Math.abs(v)); refreshPreview(); break; }
-    case 'zero': { const pid=b.dataset.pid; draft.vals[pid]='0'; draft.neg[pid]=false; document.getElementById('in-'+pid).value='0'; refreshPreview(); break; }
+    case 'focus': if(draft && !draft.calc && !(g.mode==='winner'&&draft.winner===b.dataset.pid)) setActive(b.dataset.pid, true); break;
+    case 'key': if(draft) pressKey(b.dataset.k); break;
+    case 'calc': if(draft) openCalc(b.dataset.pid); break;
+    case 'calc-add': if(draft&&draft.calc){ draft.calc.picks.push(+b.dataset.i); renderCalc(); } break;
+    case 'calc-rm': if(draft&&draft.calc){ draft.calc.picks.splice(+b.dataset.n,1); renderCalc(); } break;
+    case 'calc-cancel': if(draft&&draft.calc) closeCalc(); break;
+    case 'calc-ok': if(draft&&draft.calc){ const pid=draft.calc.pid; setVal(pid, deckTotal(g.type, draft.calc.picks)); closeCalc(); nextPlayer(); } break;
+    case 'chip': { const pid=b.dataset.pid; setVal(pid, readVal(pid)+(+b.dataset.v)); setActive(pid, true); draft.fresh=false; break; }
+    case 'zero': { const pid=b.dataset.pid; setVal(pid, 0); setActive(pid, true); break; }
     case 'winner': { const pid=b.dataset.pid; draft.winner = draft.winner===pid?null:pid;
       sheet.querySelectorAll('[data-act="winner"]').forEach(x=>x.setAttribute('aria-pressed', x.dataset.pid===draft.winner));
-      if(draft.winner){ draft.vals[pid]=''; document.getElementById('in-'+pid).value=''; } refreshPreview(); break; }
+      if(draft.winner){ draft.vals[pid]=''; draft.neg[pid]=false; }
+      g.players.forEach(p=>updBox(p.id)); refreshPreview();
+      if(draft.winner && draft.active===pid){ const ids=enabledPids(); if(ids.length) setActive(ids[0]); } else if(draft.active) setActive(draft.active, true);
+      break; }
     case 'closer': { const pid=b.dataset.pid; draft.closer = draft.closer===pid?null:pid;
       sheet.querySelectorAll('[data-act="closer"]').forEach(x=>x.setAttribute('aria-pressed', x.dataset.pid===draft.closer)); refreshPreview(); break; }
   }
@@ -1324,12 +1433,7 @@ document.addEventListener('click', e=>{
 
 document.addEventListener('input', e=>{
   const t = e.target;
-  if(t.classList.contains('score-in') && draft){
-    let v = t.value;
-    if(v.includes('-')){ const g=S.games[ui.gameId]; if((PRESETS[g.type]||{}).neg){ draft.neg[t.dataset.pid]=!draft.neg[t.dataset.pid]; const sg=sheet.querySelector(`.sign[data-pid="${t.dataset.pid}"]`); if(sg) sg.setAttribute('aria-pressed',draft.neg[t.dataset.pid]); } v=v.replace(/-/g,''); t.value=v; }
-    v = v.replace(/[^0-9]/g,''); if(v!==t.value) t.value=v;
-    draft.vals[t.dataset.pid]=v; refreshPreview();
-  } else if(t.id==='g-name' && ui.setup){ ui.setup.name=t.value; }
+  if(t.id==='g-name' && ui.setup){ ui.setup.name=t.value; }
   else if(t.id==='new-player' && ui.setup){ ui.setup.newName=t.value; }
   else if(t.id==='g-target' && ui.setup){ const v=parseInt(t.value.replace(/[^0-9]/g,''),10); ui.setup.target = isNaN(v)?null:v; }
 });
@@ -1340,15 +1444,13 @@ document.addEventListener('change', e=>{
 });
 document.addEventListener('keydown', e=>{
   const t = e.target;
-  if(e.key==='Enter' && t.classList && t.classList.contains('score-in')){
-    e.preventDefault();
-    const ins = Array.from(sheet.querySelectorAll('.score-in:not(:disabled)'));
-    const i = ins.indexOf(t);
-    if(i<ins.length-1) ins[i+1].focus(); else saveRound();
+  if(draft && !sheet.hidden && !draft.calc && !(t.tagName==='INPUT'||t.tagName==='SELECT'||t.tagName==='TEXTAREA') && !e.metaKey && !e.ctrlKey && !e.altKey){
+    const map = {Backspace:'back', Delete:'back', Enter:'next', '-':'sign', '+':'p1'};
+    const k = /^[0-9]$/.test(e.key) ? e.key : map[e.key];
+    if(k){ e.preventDefault(); pressKey(k); return; }
   }
-  if(e.key==='Escape' && !sheet.hidden) closeEntry();
+  if(e.key==='Escape' && !sheet.hidden){ if(draft && draft.calc) closeCalc(); else closeEntry(); }
 });
-document.addEventListener('focusin', e=>{ if(e.target.classList && e.target.classList.contains('score-in')) e.target.select(); });
 document.addEventListener('submit', e=>{
   if(e.target.id==='paste-form'){ e.preventDefault(); receiveFromText(document.getElementById('paste-link').value); return; }
   if(e.target.id==='add-form-p'){ e.preventDefault(); const i=document.getElementById('new-player-p'); addPlayer(i.value||''); render(); const n=document.getElementById('new-player-p'); if(n) n.focus(); return; }
