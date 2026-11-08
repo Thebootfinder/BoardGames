@@ -858,14 +858,12 @@ function renderGame(){
   if(n>=2) h += `<section class="section"><div class="section-head"><h2>Évolution</h2></div><div class="card">${chart(g)}</div></section>`;
   if(n) h += `<section class="section"><div class="section-head"><h2>Manches</h2><span class="muted small">Touche une manche pour la corriger</span></div>${roundsTable(g)}</section>`;
 
-  if(isDone){
-    h += `<section class="section">`;
-    if(ui.confirmDelete) h += `<div class="card confirm"><span class="grow">Supprimer définitivement cette partie ?</span><button class="btn ghost" data-act="nodel" style="min-height:44px">Garder</button><button class="btn danger" data-act="del" style="min-height:44px">Supprimer</button></div>`;
-    else h += `<div class="confirm"><button class="link" data-act="share-game">Partager</button><span class="muted">·</span><button class="link" data-act="reopen">Reprendre la partie</button><span class="grow"></span><button class="link" style="color:var(--danger)" data-act="askdel">Supprimer</button></div>`;
-    h += `</section>`;
-  } else if(n){
-    h += `<section class="section"><div class="confirm"><button class="link" data-act="finish">Terminer la partie maintenant</button></div></section>`;
-  }
+  h += `<section class="section">`;
+  const delLink = `<span class="grow"></span><button class="link" style="color:var(--danger)" data-act="askdel">Supprimer</button>`;
+  if(ui.confirmDelete) h += `<div class="card confirm"><span class="grow">Supprimer définitivement cette partie ?</span><button class="btn ghost" data-act="nodel" style="min-height:44px">Garder</button><button class="btn danger" data-act="del" style="min-height:44px">Supprimer</button></div>`;
+  else if(isDone) h += `<div class="confirm"><button class="link" data-act="share-game">Partager</button><span class="muted">·</span><button class="link" data-act="reopen">Reprendre la partie</button>${delLink}</div>`;
+  else h += `<div class="confirm">${n?'<button class="link" data-act="finish">Terminer la partie maintenant</button>':''}${delLink}</div>`;
+  h += `</section>`;
   app.innerHTML = h;
   dock.hidden = false;
   dock.innerHTML = isDone
