@@ -1,5 +1,5 @@
 // Tablée service worker: works offline, refreshes the app in the background.
-const CACHE = 'tablee-v8';
+const CACHE = 'tablee-v9';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {

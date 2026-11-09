@@ -334,6 +334,9 @@ const PRESETS = {
   cinqrois:{name:'5 Rois',low:true,target:null,mode:'points',tile:'#5B6E2A',glyph:'K',alias:'five crowns cinq rois',
     desc:'Petit score gagne · 11 manches',
     rule:'11 manches, de 3 à 13 cartes. Chacun note la valeur des cartes qui lui restent (0 pour celui qui a fini). Après la 11e manche, le plus petit total gagne.'},
+  molkky:{name:'Mölkky',low:false,target:50,bust:25,mode:'points',tile:'#5E8C3A',glyph:'12',alias:'molky quilles',
+    desc:'Pile 50 pour gagner',
+    rule:'Note les points de chaque lancer (une manche par tour de table). Il faut atteindre 50 pile : un joueur qui dépasse 50 retombe à 25, Tablée le fait tout seul.'},
   papayoo:{name:'Papayoo',low:true,target:null,mode:'points',tile:'#B5701C',glyph:'40',
     desc:'Moins de points gagne',
     rule:'Note les points ramassés par chacun à chaque manche (le Papayoo vaut 40). Jouez le nombre de manches prévu : le plus petit total gagne.'},
@@ -531,7 +534,7 @@ function customGames(){
   const seen = {}, out = [];
   Object.values(S.games).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).forEach(g=>{
     if(g.type!=='libre') return; const n = (g.name||'').trim(); const k = noAccent(n);
-    if(!n || n==='Partie libre' || n==='Autre jeu' || seen[k]) return; seen[k] = 1;
+    if(!n || n==='Partie libre' || n==='Autre jeu' || seen[k] || Object.values(PRESETS).some(p=>noAccent(p.name)===k)) return; seen[k] = 1;
     out.push({ key:'libre:'+k, name:n, tile:PRESETS.libre.tile, glyph:n.charAt(0).toUpperCase(),
       desc:(g.low?'Petit score gagne':'Gros score gagne')+(g.target?' · '+g.target:''), act:`data-act="new-custom" data-name="${esc(n)}"` });
   });
@@ -954,7 +957,7 @@ function renderGame(){
     h += `<div class="lead ${x.rank===1&&n?'first':''}" data-pid="${x.p.id}">
       <span class="rank num">${n?x.rank:'·'}</span><span class="avatar" style="--c:${x.p.color}">${initial(x.p.name)}</span>
       <div style="min-width:0"><div class="name">${esc(x.p.name)}</div><div class="sub">${esc(sub)}</div></div>
-      <div><div class="total num">${x.total}</div>${d!==null?`<div class="delta num">${sign(d)}${mk==='x2'?' ×2':mk==='win'?' ★':''}</div>`:''}</div>
+      <div><div class="total num">${x.total}</div>${d!==null?`<div class="delta num">${sign(d)}${mk==='x2'?' ×2':mk==='win'?' ★':mk==='bust'?' ↩':''}</div>`:''}</div>
       ${g.target?`<div class="bar ${hot?'hot':''}" aria-hidden="true"><i style="width:${pct}%;--c:${x.p.color}"></i></div>`:''}
     </div>`;
   });
@@ -1062,7 +1065,7 @@ function roundsTable(g){
     const vals = g.players.map(p=>r.scores[p.id]||0);
     const best = g.low ? Math.min(...vals) : Math.max(...vals);
     h += `<tr data-act="edit" data-i="${i}"><td>${i+1}</td>${g.players.map(p=>{ const v=r.scores[p.id]||0; const m=r.marks&&r.marks[p.id];
-      return `<td class="${v===best?'best':''}">${v}${m==='x2'?'<span class="mark">×2</span>':m==='win'?'<span class="mark">★</span>':''}</td>`; }).join('')}</tr>`;
+      return `<td class="${v===best?'best':''}">${v}${m==='x2'?'<span class="mark">×2</span>':m==='win'?'<span class="mark">★</span>':m==='bust'?'<span class="mark">↩</span>':''}</td>`; }).join('')}</tr>`;
   });
   const t = totals(g);
   h += `</tbody><tfoot><tr><td>Total</td>${g.players.map(p=>`<td>${t[p.id]}</td>`).join('')}</tr></tfoot></table></div>`;
@@ -1215,6 +1218,10 @@ function computeRound(g){
     const othersMin = Math.min(...g.players.filter(p=>p.id!==c).map(p=>scores[p.id]));
     if(cv>0 && othersMin<=cv){ scores[c]=cv*2; marks[c]='x2'; }
   }
+  if(pr.bust && g.target){ // Mölkky: going over the target drops the total back to pr.bust
+    const before = totals({ players:g.players, rounds:g.rounds.slice(0, draft.edit!=null ? draft.edit : g.rounds.length) });
+    g.players.forEach(p=>{ if(before[p.id]+scores[p.id] > g.target){ scores[p.id] = pr.bust - before[p.id]; marks[p.id]='bust'; } });
+  }
   return { scores, marks, raw:{ vals:Object.assign({},draft.vals), neg:Object.assign({},draft.neg), closer:draft.closer, winner:draft.winner } };
 }
 
@@ -1225,7 +1232,7 @@ function refreshPreview(){
   g.players.forEach(p=>{
     const el = document.getElementById('pv-'+p.id); if(!el) return;
     const v = res.scores[p.id]; const nt = t[p.id]+v;
-    const tag = res.marks[p.id]==='x2'?' (×2)':res.marks[p.id]==='win'?' ★':'';
+    const tag = res.marks[p.id]==='x2'?' (×2)':res.marks[p.id]==='win'?' ★':res.marks[p.id]==='bust'?' (plus de '+g.target+', retour à 25)':'';
     el.textContent = `${sign(v)}${tag} → ${nt}`;
     el.classList.toggle('up', !!(g.target && nt>=g.target));
     const box = sheet.querySelector(`.entry[data-pid="${p.id}"]`);
