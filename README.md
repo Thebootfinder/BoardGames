@@ -1,6 +1,6 @@
 # Tablée
 
-Appli web installable pour compter les points des jeux de société (Skyjo, Flip 7, Uno, 6 qui prend, ou n'importe quel autre jeu) et garder l'historique des parties.
+Appli web installable pour compter les points des jeux de société (Skyjo, Flip 7, Uno, 6 qui prend, Tarot, Belote, Rummikub, Skull King… ou n'importe quel autre jeu) et garder l'historique des parties.
 
 - Fonctionne hors ligne une fois installée.
 - Les parties restent sur le téléphone (stockage local). La page « Sauvegarde & partage » crée un fichier de sauvegarde à restaurer sur un autre appareil, et l'appli rappelle de sauvegarder quand plusieurs parties ne le sont pas.
