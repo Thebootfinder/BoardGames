@@ -9,7 +9,7 @@ head = '''<!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#EEF1F5" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F131B" media="(prefers-color-scheme: dark)">
-<meta name="description" content="Compte les points de tes jeux de société : Skyjo, Flip 7, Uno, 6 qui prend et les autres.">
+<meta name="description" content="Compte les points de tes jeux de société : Skyjo, Flip 7, Uno, 6 qui prend, Tarot, Belote, Rummikub et les autres.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">

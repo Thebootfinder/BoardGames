@@ -56,6 +56,11 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.
 .tile.wide::after{display:none}
 .tile.wide b{font-size:18px}
 .tile.wide span{color:var(--muted)}
+.game-list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.game-row{display:flex;align-items:center;gap:12px;text-align:left;width:100%;border:0;background:none;color:var(--ink);padding:10px 12px;min-height:58px}
+.game-row+.game-row{border-top:1px solid var(--line)}
+.game-row b{font-size:16px}
+.game-ico{flex:none;width:38px;height:38px;border-radius:10px;background:var(--tile);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:16px}
 
 /* cards */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
@@ -317,10 +322,51 @@ const PRESETS = {
   sixqp:{name:'6 qui prend',low:true,target:66,mode:'points',tile:'#7B4FB8',glyph:'66',
     desc:'Moins de têtes gagne · fin à 66',
     rule:'Note les têtes ramassées par chacun à chaque manche. Dès qu’un joueur atteint 66, la partie s’arrête et celui qui en a le moins gagne.'},
-  libre:{name:'Partie libre',low:false,target:null,mode:'points',neg:true,tile:'#3E5C76',glyph:'?',
+  belote:{name:'Belote',low:false,target:1000,mode:'points',tile:'#1E7B5C',glyph:'♣',alias:'coinche contree',
+    desc:'Gros score gagne · objectif 1000',
+    rule:'Jouez en équipes : crée un « joueur » par équipe (par exemple Nous et Eux) et note les points de chaque équipe à chaque donne. La première équipe à 1000 gagne (mets 501 ou 2000 selon votre habitude).'},
+  dame:{name:'Dame de pique',low:true,target:100,mode:'points',tile:'#3B3F63',glyph:'Q',alias:'hearts coeurs coeur',
+    desc:'Moins de points gagne · fin à 100',
+    rule:'Chaque cœur ramassé vaut 1 point et la dame de pique 13. Celui qui ramasse tout peut à la place donner 26 points à chacun des autres. Dès qu’un joueur atteint 100, le plus petit total gagne.'},
+  dutch:{name:'Dutch',low:true,target:100,mode:'points',neg:true,tile:'#2F6DB5',glyph:'D',alias:'cactus cabo',
+    desc:'Petit score gagne · fin à 100',
+    rule:'À la fin de chaque manche, chacun note la valeur des cartes qu’il garde (avec les pénalités de votre variante). Dès qu’un joueur dépasse 100, la partie s’arrête et le plus petit total gagne.'},
+  cinqrois:{name:'5 Rois',low:true,target:null,mode:'points',tile:'#5B6E2A',glyph:'K',alias:'five crowns cinq rois',
+    desc:'Petit score gagne · 11 manches',
+    rule:'11 manches, de 3 à 13 cartes. Chacun note la valeur des cartes qui lui restent (0 pour celui qui a fini). Après la 11e manche, le plus petit total gagne.'},
+  papayoo:{name:'Papayoo',low:true,target:null,mode:'points',tile:'#B5701C',glyph:'40',
+    desc:'Moins de points gagne',
+    rule:'Note les points ramassés par chacun à chaque manche (le Papayoo vaut 40). Jouez le nombre de manches prévu : le plus petit total gagne.'},
+  rami:{name:'Rami',low:true,target:null,mode:'points',tile:'#A33A4F',glyph:'R',alias:'rummy gin',
+    desc:'Petit score gagne',
+    rule:'À la fin de chaque manche, chacun note la valeur des cartes qui lui restent en main (0 pour celui qui a fini). Le plus petit total gagne. Ajoute un score de fin si vous jouez en élimination.'},
+  rummikub:{name:'Rummikub',low:false,target:null,mode:'winner',others:-1,tile:'#C8641B',glyph:'13',
+    desc:'Le gagnant prend les points',
+    rule:'Choisis qui a posé toutes ses tuiles, puis saisis la valeur des tuiles qui restent aux autres (Joker 30). Ils perdent ces points et le gagnant marque leur somme.'},
+  scrabble:{name:'Scrabble',low:false,target:null,mode:'points',neg:true,tile:'#9C6B30',glyph:'Z',
+    desc:'Gros score gagne · un tour par manche',
+    rule:'Saisis les points de chaque mot posé, une manche par tour de table. À la fin, retire à chacun la valeur de ses lettres restantes (score négatif). Le plus gros total gagne.'},
+  skullking:{name:'Skull King',low:false,target:null,mode:'points',neg:true,tile:'#33475B',glyph:'☠',
+    desc:'Gros score gagne · 10 manches',
+    rule:'Après chaque manche, note le score de chacun selon son pari, bonus compris (positif ou négatif). Après 10 manches, le plus gros total gagne.'},
+  sushigo:{name:'Sushi Go',low:false,target:null,mode:'points',tile:'#CF4F78',glyph:'S',
+    desc:'Gros score gagne · 3 manches',
+    rule:'Note les points de chacun à la fin de chaque manche (les puddings se comptent à la fin de la 3e). Après 3 manches, le plus gros total gagne.'},
+  tarot:{name:'Tarot',low:false,target:null,mode:'points',neg:true,tile:'#A8582A',glyph:'21',
+    desc:'Gros score gagne · sans limite',
+    rule:'Note les points de chacun après chaque donne, positifs ou négatifs (la somme d’une donne fait 0). Quand vous décidez d’arrêter, le plus gros total gagne.'},
+  wizard:{name:'Wizard',low:false,target:null,mode:'points',neg:true,tile:'#4B3FA0',glyph:'W',
+    desc:'Gros score gagne',
+    rule:'Pari réussi : 20 points plus 10 par pli. Pari raté : moins 10 par pli d’écart. Saisis le résultat de chacun à chaque manche, le plus gros total gagne.'},
+  yaniv:{name:'Yaniv',low:true,target:200,mode:'points',tile:'#1F8A8A',glyph:'Y',
+    desc:'Petit score gagne · fin à 200',
+    rule:'Note les points restant en main à chaque manche (avec la pénalité d’Assaf). Un joueur qui dépasse 200 est éliminé, le plus petit total gagne. Variante : tomber pile sur 50 ou 100 divise le score par deux.'},
+  libre:{name:'Autre jeu',low:false,target:null,mode:'points',neg:true,tile:'#3E5C76',glyph:'?',
     desc:'N’importe quel jeu',
-    rule:'Règle le sens du classement et un éventuel score de fin. Utile pour le Tarot, la Belote, Yams, etc.'}
+    rule:'Donne un nom au jeu, règle le sens du classement et un éventuel score de fin. Tablée le gardera dans tes jeux.'}
 };
+const CLASSICS = ['skyjo','flip7','uno','sixqp'];
+const noAccent = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
 const COLORS = ['#E2552B','#2F80C2','#E39B1B','#2E9E62','#8C5BD6','#D94A8C','#159A9A','#6F7B2C'];
 
 /* ---------- State & storage ---------- */
@@ -437,6 +483,7 @@ function render(){
   else if(ui.view==='players') renderPlayers();
   else if(ui.view==='player') renderPlayer();
   else if(ui.view==='data') renderData();
+  else if(ui.view==='games') renderGames();
   manageWakeLock();
 }
 
@@ -465,9 +512,9 @@ function renderHome(){
     h += `</section>`;
   }
   h += `<section class="section"><div class="section-head"><h2>Nouvelle partie</h2></div><div class="tiles">`;
-  ['skyjo','flip7','uno','sixqp'].forEach(k=>{ const p = PRESETS[k];
-    h += `<button class="tile" style="--tile:${p.tile}" data-glyph="${esc(p.glyph)}" data-act="new" data-type="${k}"><b>${p.name}</b><span>${p.desc}</span></button>`; });
-  h += `<button class="tile wide" data-act="new" data-type="libre"><b>+ Autre jeu</b><span>règles libres</span></button></div></section>`;
+  myGames().slice(0,4).forEach(x=>{
+    h += `<button class="tile" style="--tile:${x.tile}" data-glyph="${esc(x.glyph)}" ${x.act}><b>${esc(x.name)}</b><span>${esc(x.desc)}</span></button>`; });
+  h += `<button class="tile wide" data-act="games"><b>Tous les jeux</b><span>${Object.keys(PRESETS).length-1} jeux ou le tien</span></button></div></section>`;
 
   h += `<section class="section"><div class="section-head"><h2>Dernières parties</h2>${done.length?'<button class="link" data-act="history">Tout voir</button>':''}</div>`;
   if(done.length){ done.slice(0,3).forEach(g=>{ h += gameCard(g); }); }
@@ -477,6 +524,65 @@ function renderHome(){
   h += `<section class="section"><button class="card data-link" data-act="data">${ICON_SHARE}<span class="grow"><b>Sauvegarde &amp; partage</b><br><span class="muted small">Ne rien perdre, envoyer des parties à un ami</span></span><span class="muted" aria-hidden="true">›</span></button></section>`;
   h += `<p class="save-note">${saveMode==='cloud'?'Parties sauvegardées sur ton compte.':'Parties sauvegardées sur cet appareil'+(S.lastBackup?' · dernière sauvegarde le '+esc(shortDate(S.lastBackup)):'')+'.'}</p>`;
   app.innerHTML = h; dock.hidden = true;
+}
+
+/* Games for the home tiles: the ones played most recently first, then the classics. */
+function customGames(){
+  const seen = {}, out = [];
+  Object.values(S.games).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).forEach(g=>{
+    if(g.type!=='libre') return; const n = (g.name||'').trim(); const k = noAccent(n);
+    if(!n || n==='Partie libre' || n==='Autre jeu' || seen[k]) return; seen[k] = 1;
+    out.push({ key:'libre:'+k, name:n, tile:PRESETS.libre.tile, glyph:n.charAt(0).toUpperCase(),
+      desc:(g.low?'Petit score gagne':'Gros score gagne')+(g.target?' · '+g.target:''), act:`data-act="new-custom" data-name="${esc(n)}"` });
+  });
+  return out;
+}
+function presetItem(k){ const p = PRESETS[k]; return { key:k, name:p.name, tile:p.tile, glyph:p.glyph, desc:p.desc, act:`data-act="new" data-type="${k}"` }; }
+function myGames(){
+  const custom = {}; customGames().forEach(x=>custom[x.key]=x);
+  const seen = {}, out = [];
+  const add = x=>{ if(x && !seen[x.key]){ seen[x.key]=1; out.push(x); } };
+  Object.values(S.games).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).forEach(g=>{
+    if(g.type==='libre') add(custom['libre:'+noAccent(g.name)]);
+    else if(PRESETS[g.type]) add(presetItem(g.type));
+  });
+  CLASSICS.forEach(k=>add(presetItem(k)));
+  return out;
+}
+
+/* ---------- All games: search + full list ---------- */
+function gameRow(x){
+  return `<button class="game-row" ${x.act}><span class="game-ico" style="--tile:${x.tile}">${esc(x.glyph)}</span><span class="grow"><b>${esc(x.name)}</b><br><span class="muted small">${esc(x.desc)}</span></span></button>`;
+}
+function gameListHtml(q){
+  q = noAccent(q);
+  const all = Object.keys(PRESETS).filter(k=>k!=='libre').map(presetItem).sort((a,b)=>a.name.localeCompare(b.name,'fr'));
+  const custom = customGames();
+  const match = x=>!q || noAccent(x.name+' '+(PRESETS[x.key]&&PRESETS[x.key].alias||'')).includes(q);
+  let h = '';
+  if(!q){
+    if(custom.length) h += `<div class="eyebrow">Tes jeux</div><div class="game-list">${custom.map(gameRow).join('')}</div><div class="eyebrow" style="margin-top:8px">Tous les jeux</div>`;
+    h += `<div class="game-list">${all.map(gameRow).join('')}</div>`;
+    h += `<div class="game-list" style="margin-top:8px">${gameRow({name:'+ Autre jeu', tile:PRESETS.libre.tile, glyph:'+', desc:'Choisis le nom et les règles', act:'data-act="new" data-type="libre"'})}</div>`;
+    return h;
+  }
+  const found = custom.concat(all).filter(match);
+  const exact = found.some(x=>noAccent(x.name)===q);
+  if(found.length) h += `<div class="game-list">${found.map(gameRow).join('')}</div>`;
+  if(!exact){ const raw = (ui.gameQuery||'').trim();
+    h += `<div class="game-list" style="margin-top:8px">${gameRow({name:'+ Créer « '+raw+' »', tile:PRESETS.libre.tile, glyph:'+', desc:'Avec tes propres règles', act:`data-act="new-custom" data-name="${esc(raw)}"`})}</div>`; }
+  return h;
+}
+function renderGames(){
+  let h = `<header class="top"><button class="icon-btn" data-act="home" aria-label="Retour">${ICON_BACK}</button><h1>Choisir un jeu</h1></header>`;
+  h += `<section class="section"><input id="game-search" class="input" type="search" placeholder="Rechercher un jeu" autocomplete="off" enterkeyhint="search" value="${esc(ui.gameQuery||'')}">
+    <div id="game-results">${gameListHtml(ui.gameQuery||'')}</div></section>`;
+  app.innerHTML = h; dock.hidden = true;
+}
+function startCustom(name){
+  name = (name||'').trim();
+  const last = Object.values(S.games).filter(g=>g.type==='libre' && noAccent(g.name)===noAccent(name)).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))[0];
+  startSetup('libre', null, last ? { name:last.name, target:last.target, low:last.low } : { name });
 }
 
 function gameCard(g){
@@ -748,11 +854,12 @@ function deletePlayer(id){
 }
 
 /* ---------- Setup ---------- */
-function startSetup(type, from){
+function startSetup(type, from, over){
   const p = PRESETS[type];
   ui.setup = { type, name: type==='libre'?'':'', target: p.target, low: p.low,
     selected: from ? from.players.map(x=>x.id) : [], newName:'' };
   if(from){ ui.setup.target = from.target; ui.setup.low = from.low; ui.setup.name = from.name||''; }
+  if(over) Object.assign(ui.setup, over);
   ui.view = 'setup'; render(); window.scrollTo(0,0);
 }
 
@@ -1099,7 +1206,8 @@ function computeRound(g){
   g.players.forEach(p=>scores[p.id]=readVal(p.id));
   if(g.mode==='winner' && draft.winner){
     const sum = g.players.filter(p=>p.id!==draft.winner).reduce((a,p)=>a+Math.abs(scores[p.id]),0);
-    g.players.forEach(p=>scores[p.id]=0); scores[draft.winner]=sum; marks[draft.winner]='win';
+    const pr0 = PRESETS[g.type]||{};
+    g.players.forEach(p=>scores[p.id] = pr0.others ? pr0.others*Math.abs(scores[p.id]) : 0); scores[draft.winner]=sum; marks[draft.winner]='win';
   }
   const pr = PRESETS[g.type]||{};
   if(pr.closer && draft.closer){
@@ -1360,6 +1468,8 @@ document.addEventListener('click', e=>{
     case 'home': if(ui.view==='players' && ui.returnTo==='setup' && ui.setup){ ui.view='setup'; render(); break; } ui.flash=''; ui.view='home'; ui.confirmDelete=false; render(); window.scrollTo(0,0); break;
     case 'history': ui.view='history'; render(); window.scrollTo(0,0); break;
     case 'new': startSetup(b.dataset.type); break;
+    case 'new-custom': startCustom(b.dataset.name); break;
+    case 'games': ui.view='games'; ui.gameQuery=''; render(); window.scrollTo(0,0); break;
     case 'open': ui.view='game'; ui.gameId=b.dataset.id; ui.confirmDelete=false; render(); window.scrollTo(0,0); break;
     case 'demo': makeDemo(); break;
     case 'stats': ui.view='stats'; render(); window.scrollTo(0,0); break;
@@ -1418,7 +1528,8 @@ document.addEventListener('click', e=>{
 
 document.addEventListener('input', e=>{
   const t = e.target;
-  if(t.id==='g-name' && ui.setup){ ui.setup.name=t.value; }
+  if(t.id==='game-search'){ ui.gameQuery=t.value; document.getElementById('game-results').innerHTML = gameListHtml(t.value); }
+  else if(t.id==='g-name' && ui.setup){ ui.setup.name=t.value; }
   else if(t.id==='new-player' && ui.setup){ ui.setup.newName=t.value; }
   else if(t.id==='g-target' && ui.setup){ const v=parseInt(t.value.replace(/[^0-9]/g,''),10); ui.setup.target = isNaN(v)?null:v; }
 });
